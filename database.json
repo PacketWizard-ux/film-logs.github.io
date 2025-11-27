@@ -1,0 +1,74 @@
+{
+  "user": {
+    "name": "Admin",
+    "role": "PRO",
+    "avatar": { "id": "snorlax", "name": "Dozer", "color": "bg-teal-200", "icon": "💤" }
+  },
+  "movies": [
+    {
+      "id": 1,
+      "title": "Fallout",
+      "year": 2024,
+      "director": "Jonathan Nolan",
+      "type": "TV Series",
+      "season": "Season 1",
+      "rating": 4.5,
+      "watched": true,
+      "poster": "https://image.tmdb.org/t/p/w500/8c0ap7rG6S513yv6gN8xJ27T28.jpg",
+      "notes": "\"War never changes.\" A masterpiece adaptation.",
+      "genre": "Sci-Fi",
+      "date": "2024-04-12",
+      "folder": "Sci-Fi"
+    },
+    {
+      "id": 2,
+      "title": "Dune: Part Two",
+      "year": 2024,
+      "director": "Denis Villeneuve",
+      "type": "Film / Movie",
+      "rating": 5,
+      "watched": true,
+      "poster": "https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg",
+      "notes": "\"Visual perfection. Lisan al Gaib!\"",
+      "genre": "Sci-Fi",
+      "date": "2024-03-05",
+      "folder": "Sci-Fi"
+    },
+    {
+      "id": 3,
+      "title": "Spirited Away",
+      "year": 2001,
+      "director": "Hayao Miyazaki",
+      "type": "Anime",
+      "rating": 5,
+      "watched": true,
+      "poster": "https://image.tmdb.org/t/p/w500/39wmItIWsg5sZMyRUKGudW53yY.jpg",
+      "notes": "Pure magic.",
+      "genre": "Fantasy",
+      "date": "2024-01-10",
+      "folder": "Ghibli Vibes"
+    }
+  ],
+  "watchlist": [
+    {
+      "id": 101,
+      "title": "Poor Things",
+      "year": 2023,
+      "type": "Film / Movie",
+      "poster": "https://image.tmdb.org/t/p/w500/kCGlIMHnOm8JPXq3rXM6c5wMxc.jpg"
+    }
+  ],
+  "journals": [
+    {
+      "id": 201,
+      "title": "Why I love Cinema",
+      "date": "2024-11-01",
+      "text": "Cinema is more than just entertainment. It is a window into the soul of humanity. Today I realized how much lighting affects emotion...",
+      "mood": "happy"
+    }
+  ],
+  "folders": [
+    { "id": 1, "name": "Sci-Fi", "count": 2 },
+    { "id": 2, "name": "Ghibli Vibes", "count": 1 }
+  ]
+}
