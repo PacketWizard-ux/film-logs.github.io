@@ -11,10 +11,10 @@ import {
 
 const OMDB_API_KEY = 'cb00e7be';
 const DEFAULT_USER_DATA = {
-    name: "Vanit",
-    idNo: "1",
-    issued: "FEB 2005",
-    memberType: "THE CREATOR"
+    name: "Ethan",
+    idNo: "8821-039X",
+    issued: "NOV 2024",
+    memberType: "LIFETIME MEMBER"
 };
 
 // --- HELPER FUNCTIONS ---
