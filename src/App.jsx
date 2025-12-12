@@ -1,1202 +1,1255 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Folder, Plus, Search, Film, Star, 
-  Trash2, BookOpen, Quote, Clapperboard, 
-  User, X, Edit3, CheckSquare, 
-  Music, Clock, Grid, List, Filter, Heart, Upload, Calendar,
-  Tv, BarChart3, Download, Trophy, Award, Sparkles, SortAsc,
-  Moon, Sun, Eye, FolderPlus, ArrowRight, Save, FileJson, AlertCircle, PlayCircle,
-  Smile, Meh, Frown, Menu
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import {
+    Folder, Plus, Search, Film, Star, Trash2, BookOpen, Clapperboard,
+    User, X, Edit3, CheckSquare, Grid, Eye, Save, Menu, ChevronLeft,
+    ChevronRight, Upload, Download, HardDrive, Sparkles, LayoutDashboard,
+    PieChart, MonitorPlay, Calendar, MoreVertical, ExternalLink, FileSpreadsheet,
+    Moon, Sun, BarChart3, TrendingUp, Award, QrCode, CreditCard
 } from 'lucide-react';
 
-// --- Assets & Constants ---
+// --- CONSTANTS & CONFIG ---
 
-const AVATARS = [
-  { id: 'pikachu', name: 'Sparky', color: 'bg-yellow-300', icon: '⚡' },
-  { id: 'gengar', name: 'Shadow', color: 'bg-purple-400', icon: '👻' },
-  { id: 'charizard', name: 'Blaze', color: 'bg-orange-400', icon: '🔥' },
-  { id: 'squirtle', name: 'Splash', color: 'bg-blue-300', icon: '💧' },
-  { id: 'bulbasaur', name: 'Leafy', color: 'bg-green-300', icon: '🍃' },
-  { id: 'eevee', name: 'Vee', color: 'bg-amber-200', icon: '🦊' },
-  { id: 'jiggly', name: 'Singer', color: 'bg-pink-200', icon: '🎤' },
-  { id: 'snorlax', name: 'Dozer', color: 'bg-teal-200', icon: '💤' },
-];
-
-const ROULETTE_OPTIONS = ['Sci-Fi', 'Biopic', 'Rom-Com', 'Horror', 'Indie', 'Anime', 'Documentary', 'Thriller'];
-
-// --- Seed Data (Matches your database.json) ---
-const SEED_DATA = {
-  user: {
-    name: "Admin",
-    role: "PRO",
-    avatar: { id: "snorlax", name: "Dozer", color: "bg-teal-200", icon: "💤" }
-  },
-  movies: [
-    {
-      id: 1,
-      title: "Fallout",
-      year: 2024,
-      director: "Jonathan Nolan",
-      type: "TV Series",
-      season: "Season 1",
-      rating: 4.5,
-      watched: true,
-      poster: "https://image.tmdb.org/t/p/w500/8c0ap7rG6S513yv6gN8xJ27T28.jpg",
-      notes: "\"War never changes.\" A masterpiece adaptation.",
-      genre: "Sci-Fi",
-      date: "2024-04-12",
-      folder: "Sci-Fi"
-    },
-    {
-      id: 2,
-      title: "Dune: Part Two",
-      year: 2024,
-      director: "Denis Villeneuve",
-      type: "Film / Movie",
-      rating: 5,
-      watched: true,
-      poster: "https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg",
-      notes: "\"Visual perfection. Lisan al Gaib!\"",
-      genre: "Sci-Fi",
-      date: "2024-03-05",
-      folder: "Sci-Fi"
-    },
-    {
-      id: 3,
-      title: "Spirited Away",
-      year: 2001,
-      director: "Hayao Miyazaki",
-      type: "Anime",
-      rating: 5,
-      watched: true,
-      poster: "https://image.tmdb.org/t/p/w500/39wmItIWsg5sZMyRUKGudW53yY.jpg",
-      notes: "Pure magic.",
-      genre: "Fantasy",
-      date: "2024-01-10",
-      folder: "Ghibli Vibes"
-    }
-  ],
-  watchlist: [
-    {
-      id: 101,
-      title: "Poor Things",
-      year: 2023,
-      type: "Film / Movie",
-      poster: "https://image.tmdb.org/t/p/w500/kCGlIMHnOm8JPXq3rXM6c5wMxc.jpg"
-    }
-  ],
-  journals: [
-    {
-      id: 201,
-      title: "Why I love Cinema",
-      date: "2024-11-01",
-      displayDate: "Friday | 1st November, 2024",
-      text: "Cinema is more than just entertainment. It is a window into the soul of humanity. Today I realized how much lighting affects emotion...",
-      mood: "happy"
-    }
-  ],
-  folders: [
-    { id: 1, name: "Sci-Fi", count: 2 },
-    { id: 2, name: "Ghibli Vibes", count: 1 }
-  ]
+const OMDB_API_KEY = 'cb00e7be';
+const DEFAULT_USER_DATA = {
+    name: "Vanit",
+    idNo: "1",
+    issued: "FEB 2005",
+    memberType: "THE CREATOR"
 };
 
-// --- Utility Components ---
+// --- HELPER FUNCTIONS ---
 
-const NeoCard = ({ children, className = "", onClick, noShadow = false, style = {} }) => (
-  <div 
-    onClick={onClick}
-    style={style}
-    className={`
-      border-2 border-black rounded-xl p-4 transition-all duration-200 relative isolate
-      ${!noShadow ? 'shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:-translate-x-0.5 z-0 hover:z-20 cursor-pointer active:translate-y-0.5 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : ''}
-      ${className}
-    `}
-  >
-    {children}
-  </div>
+const generateId = () => Math.random().toString(36).substr(2, 9);
+
+const formatDate = (dateStr) => {
+    if (!dateStr) return 'Unknown Date';
+    return new Date(dateStr).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+};
+
+const parseCSV = (csvText, isWatchlist) => {
+    const lines = csvText.trim().split('\n');
+    const result = [];
+    const startIndex = lines[0].toLowerCase().includes('title') ? 1 : 0;
+    
+    for (let i = startIndex; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line) continue;
+        
+        const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+        
+        const title = values[1]?.replace(/^"|"$/g, '') || "Untitled";
+        const year = values[2] || "N/A";
+        const director = values[3]?.replace(/^"|"$/g, '') || "Unknown";
+        const imdbRating = values[5];
+        const posterUrl = values[7]?.replace(/^"|"$/g, '');
+        
+        const rating = imdbRating ? (parseFloat(imdbRating) / 2).toFixed(1) : 0;
+
+        result.push({
+            id: generateId(),
+            title: title,
+            year: year,
+            director: director,
+            rating: rating,
+            poster: posterUrl && posterUrl.length > 5 ? posterUrl : 'N/A',
+            notes: '',
+            folder: isWatchlist ? 'Watchlist' : null,
+            watched: !isWatchlist,
+            addedAt: new Date().toISOString()
+        });
+    }
+    return result;
+};
+
+// --- COMPONENTS ---
+
+// 1. UI PRIMITIVES
+
+const NeoCard = ({ children, className = "", onClick, color = "bg-white dark:bg-gray-800", style = {} }) => (
+    <div
+        onClick={onClick}
+        style={style}
+        className={`
+            border-2 border-black dark:border-white rounded-xl p-5 relative isolate transition-all duration-200
+            shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]
+            hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)]
+            hover:-translate-y-1 active:translate-y-0.5 active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:active:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]
+            text-black dark:text-white
+            ${color} ${className} ${onClick ? 'cursor-pointer' : ''}
+        `}
+    >
+        {children}
+    </div>
 );
 
-const Badge = ({ children, color = "gray" }) => {
-  const colors = {
-    gray: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
-    pink: "bg-pink-100 text-pink-900 dark:bg-pink-900 dark:text-pink-100",
-    yellow: "bg-yellow-100 text-yellow-900 dark:bg-yellow-900 dark:text-yellow-100",
-    blue: "bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100",
-    purple: "bg-purple-100 text-purple-900 dark:bg-purple-900 dark:text-purple-100",
-    green: "bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-100",
-    black: "bg-black text-white dark:bg-white dark:text-black",
-    orange: "bg-orange-100 text-orange-900 dark:bg-orange-900 dark:text-orange-100",
-  };
-  return (
-    <span className={`px-2 py-0.5 rounded-md border border-black text-[10px] font-bold uppercase tracking-wide ${colors[color] || colors.gray}`}>
-      {children}
+// Fixed Badge: Removed hardcoded text colors from base class to allow overrides
+const Badge = ({ children, color = "bg-gray-100 dark:bg-gray-700 text-black dark:text-white", className = "" }) => (
+    <span className={`px-2 py-1 rounded-md border border-black dark:border-white text-[10px] font-bold uppercase tracking-wide ${color} ${className}`}>
+        {children}
     </span>
-  );
-};
+);
 
-const CustomDatePicker = ({ value, onChange, className, darkMode }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    // Safety check for date value
-    const safeDate = value && !isNaN(new Date(value).getTime()) ? new Date(value) : new Date();
-    
-    // Format: "Thursday | 26th April, 2025"
-    const dayName = safeDate.toLocaleDateString('en-US', { weekday: 'long' });
-    const fullDate = safeDate.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
-
-    const handleDateChange = (e) => {
-        onChange(e.target.value);
-        setIsOpen(false);
+const NeoButton = ({ children, onClick, variant = "primary", className = "", type = "button", disabled = false }) => {
+    const variants = {
+        primary: "bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200",
+        secondary: "bg-white text-black hover:bg-gray-50 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700",
+        accent: "bg-[#FF0055] text-white hover:bg-[#D90048] border-black dark:border-white", // Adjusted pink for better contrast
+        danger: "bg-red-500 text-white hover:bg-red-600 border-black dark:border-white",
+        success: "bg-[#00Dfa2] text-black hover:bg-[#00c48f]",
+        ghost: "bg-transparent border-transparent shadow-none hover:bg-black/5 dark:hover:bg-white/10 dark:text-white text-black"
     };
 
     return (
-        <div className={`relative ${className}`}>
-            <div 
-                onClick={() => setIsOpen(!isOpen)}
-                className={`w-full p-3 border-2 border-black rounded-xl flex items-center justify-between cursor-pointer transition-colors ${darkMode ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-white hover:bg-gray-50'}`}
-            >
-                <div className="flex items-center gap-3">
-                    <span className={`font-black text-sm uppercase tracking-wider border-r-2 pr-3 ${darkMode ? 'text-purple-400 border-gray-600' : 'text-purple-600 border-gray-200'}`}>{dayName}</span>
-                    <span className={`font-bold text-sm ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>{fullDate}</span>
+        <button
+            type={type}
+            onClick={onClick}
+            disabled={disabled}
+            className={`
+                px-4 py-2.5 rounded-xl font-bold text-sm border-2 border-black dark:border-white
+                shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]
+                active:translate-y-[2px] active:shadow-none
+                transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed
+                ${variants[variant] || variants.primary} ${className}
+            `}
+        >
+            {children}
+        </button>
+    );
+};
+
+// 2. LAYOUT COMPONENTS
+
+const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, onSyncClick, darkMode, toggleDarkMode }) => {
+    const menuItems = [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'collections', label: 'Collections', icon: Folder },
+        { id: 'database', label: 'Database', icon: Film },
+        { id: 'watchlist', label: 'Watchlist', icon: Eye },
+        { id: 'statistics', label: 'Statistics', icon: PieChart },
+        { id: 'idcard', label: 'My ID Card', icon: CreditCard },
+    ];
+
+    return (
+        <>
+            {isOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
+                    onClick={() => setIsOpen(false)}
+                />
+            )}
+
+            <aside className={`
+                fixed top-0 left-0 h-full w-64 bg-white dark:bg-gray-950 border-r-2 border-black dark:border-white z-50 flex flex-col
+                transition-transform duration-300 ease-out
+                ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+            `}>
+                {/* Header */}
+                <div className="h-20 bg-[#FFD700] dark:bg-[#FFD700] border-b-2 border-black dark:border-white flex items-center px-6 shrink-0 relative">
+                    <div className="flex items-center gap-2 select-none">
+                        <Clapperboard size={28} className="text-black fill-black flex-shrink-0" />
+                        <h1 className="font-serif font-black text-2xl tracking-tight text-black">
+                            Cine<span className="text-pink-600">Folder</span>
+                            <span className="text-[10px] bg-black text-white px-1 py-0.5 ml-1 rounded font-sans tracking-widest align-top">PRO</span>
+                        </h1>
+                    </div>
+                    <button 
+                        onClick={() => setIsOpen(false)}
+                        className="md:hidden absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-black/10 rounded"
+                    >
+                        <X size={20} className="text-black" />
+                    </button>
                 </div>
-                <Calendar size={16} className="text-gray-400" />
+
+                {/* Navigation */}
+                <nav className="flex-1 p-4 space-y-3 overflow-y-auto custom-scrollbar">
+                    {menuItems.map(item => (
+                        <button
+                            key={item.id}
+                            onClick={() => { setActiveTab(item.id); setIsOpen(false); }}
+                            className={`
+                                w-full flex items-center px-4 py-3.5 rounded-xl border-2 font-bold text-sm transition-all duration-200 group
+                                ${activeTab === item.id
+                                    ? 'bg-black text-white border-black dark:bg-white dark:text-black dark:border-white shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.5)] translate-x-1'
+                                    : 'bg-white text-gray-700 border-transparent hover:border-black dark:bg-gray-900 dark:text-gray-300 dark:hover:border-white hover:bg-gray-50 hover:translate-x-1'}
+                            `}
+                        >
+                            <div className="w-8 flex justify-center flex-shrink-0">
+                                <item.icon size={20} />
+                            </div>
+                            <span className="whitespace-nowrap">{item.label}</span>
+                        </button>
+                    ))}
+                </nav>
+
+                {/* Footer Actions */}
+                <div className="p-4 border-t-2 border-black dark:border-white bg-gray-50 dark:bg-gray-900 space-y-3">
+                    <button 
+                        onClick={onSyncClick}
+                        className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-black dark:border-white bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors group text-sm font-bold text-black dark:text-white"
+                    >
+                        <Upload size={16} className="text-blue-600 dark:text-blue-400" />
+                        Sync Data
+                    </button>
+                    
+                    <button
+                        onClick={toggleDarkMode}
+                        className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black transition-all hover:opacity-90 font-bold text-sm"
+                    >
+                        {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+                        {darkMode ? 'Light Mode' : 'Dark Mode'}
+                    </button>
+                </div>
+            </aside>
+        </>
+    );
+};
+
+// 3. FEATURE COMPONENTS
+
+const SearchBar = ({ onSearch, value }) => (
+    <div className="relative w-full max-w-md group">
+        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-400 group-focus-within:text-black dark:group-focus-within:text-white transition-colors" />
+        <input 
+            type="text" 
+            value={value}
+            placeholder="Search database..." 
+            onChange={(e) => onSearch(e.target.value)}
+            className="w-full pl-11 pr-4 py-3 rounded-full border-2 border-black dark:border-white font-bold text-sm outline-none focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:focus:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] transition-all bg-gray-50 dark:bg-gray-800 dark:text-white focus:bg-white dark:focus:bg-gray-900 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+        />
+    </div>
+);
+
+const MovieCard = ({ movie, onClick }) => (
+    <NeoCard onClick={onClick} className="group p-0 overflow-hidden flex flex-col h-full bg-white dark:bg-gray-800 hover:z-10">
+        <div className="aspect-[2/3] w-full relative overflow-hidden bg-gray-100 dark:bg-gray-700 border-b-2 border-black dark:border-white">
+            {movie.poster && movie.poster !== 'N/A' ? (
+                <img 
+                    src={movie.poster} 
+                    alt={movie.title} 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    loading="lazy"
+                    onError={(e) => { e.target.src = 'https://placehold.co/300x450/pink/black?text=No+Img'; }}
+                />
+            ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 dark:text-gray-500 bg-gray-50 dark:bg-gray-800">
+                    <Film size={48} />
+                    <span className="text-xs font-bold mt-2 px-4 text-center text-gray-400 dark:text-gray-500 leading-tight">{movie.title}</span>
+                </div>
+            )}
+            <div className="absolute top-2 right-2 z-10">
+                 {movie.watched && movie.rating > 0 && (
+                    <div className="bg-yellow-400 text-black text-xs font-black px-2 py-1 rounded border border-black shadow-sm flex items-center gap-1">
+                        <Star size={10} fill="black" /> {movie.rating}
+                    </div>
+                 )}
+            </div>
+            {!movie.watched && (
+                <div className="absolute top-2 left-2 z-10">
+                    <Badge color="bg-green-400 text-black border-black shadow-sm">To Watch</Badge>
+                </div>
+            )}
+        </div>
+        <div className="p-4 flex flex-col flex-1 gap-2">
+            <h4 className="font-bold text-base leading-tight line-clamp-2 dark:text-white" title={movie.title}>{movie.title}</h4>
+            <div className="flex justify-between items-center mt-auto pt-2 border-t border-dashed border-gray-200 dark:border-gray-600">
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">{movie.year}</span>
+                {movie.folder && <Badge color="bg-pink-100 dark:bg-pink-900 text-black dark:text-pink-100">{movie.folder}</Badge>}
+            </div>
+        </div>
+    </NeoCard>
+);
+
+const TaskWidget = ({ tasks, setTasks }) => {
+    const [newTask, setNewTask] = useState('');
+
+    const addTask = (e) => {
+        e.preventDefault();
+        if (!newTask.trim()) return;
+        setTasks([...tasks, { id: generateId(), text: newTask, completed: false }]);
+        setNewTask('');
+    };
+
+    const toggleTask = (id) => {
+        setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+    };
+
+    const removeTask = (e, id) => {
+        e.stopPropagation();
+        setTasks(tasks.filter(t => t.id !== id));
+    };
+
+    return (
+        <NeoCard className="h-full bg-white dark:bg-gray-800 flex flex-col">
+            <h3 className="font-serif font-bold text-xl mb-4 flex items-center gap-2 border-b-2 border-dashed border-gray-200 dark:border-gray-600 pb-2 dark:text-white">
+                Quick Tasks
+                <span className="bg-black dark:bg-white text-white dark:text-black text-[10px] px-2 py-0.5 rounded-full font-sans ml-auto">
+                    {tasks.filter(t => !t.completed).length} Pending
+                </span>
+            </h3>
+            
+            <div className="flex-1 overflow-y-auto space-y-3 mb-4 custom-scrollbar pr-2">
+                {tasks.length === 0 && <p className="text-gray-400 dark:text-gray-500 text-sm italic text-center mt-4">No tasks yet.</p>}
+                {tasks.map(task => (
+                    <div 
+                        key={task.id} 
+                        onClick={() => toggleTask(task.id)}
+                        className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer group"
+                    >
+                        <div className={`
+                            w-5 h-5 rounded border-2 border-black dark:border-white flex items-center justify-center mt-0.5 transition-colors flex-shrink-0
+                            ${task.completed ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-white dark:bg-gray-800'}
+                        `}>
+                            {task.completed && <CheckSquare size={12} />}
+                        </div>
+                        <span className={`text-sm font-medium transition-all ${task.completed ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-gray-200'}`}>
+                            {task.text}
+                        </span>
+                        <button 
+                            onClick={(e) => removeTask(e, task.id)}
+                            className="ml-auto opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded"
+                        >
+                            <Trash2 size={12} />
+                        </button>
+                    </div>
+                ))}
+            </div>
+
+            <form onSubmit={addTask} className="relative mt-auto">
+                <input 
+                    value={newTask}
+                    onChange={(e) => setNewTask(e.target.value)}
+                    placeholder="+ Add task..." 
+                    className="w-full p-2 pr-10 border-b-2 border-gray-200 dark:border-gray-600 focus:border-black dark:focus:border-white outline-none font-medium text-sm bg-transparent placeholder-gray-400 dark:placeholder-gray-500 dark:text-white"
+                />
+                <button type="submit" className="absolute right-0 top-1/2 -translate-y-1/2 p-1.5 bg-black dark:bg-white text-white dark:text-black rounded-full hover:scale-110 transition-transform">
+                    <Plus size={12} />
+                </button>
+            </form>
+        </NeoCard>
+    );
+};
+
+// 4. VIEWS
+
+const Dashboard = ({ movies, tasks, setTasks, onAddMovie, onMovieClick, userData }) => {
+    // Get last 3 added movies
+    const recentMovies = [...movies].sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt)).slice(0, 3);
+
+    return (
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Hero Section */}
+            <div className="rounded-3xl border-2 border-black dark:border-white bg-[#FFF8DC] dark:bg-[#2C2C2E] p-8 md:p-12 relative overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)]">
+                <div className="relative z-10 max-w-2xl">
+                    <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4 text-black dark:text-white leading-tight">
+                        Welcome back, <br/>{userData.name}
+                    </h2>
+                    <p className="font-mono text-sm md:text-base text-gray-700 dark:text-gray-300 mb-8 max-w-lg leading-relaxed">
+                        Database contains <span className="bg-black text-white dark:bg-white dark:text-black px-1 font-bold">{movies.length} entries</span>. 
+                        You have <span className="border-b-2 border-black dark:border-white font-bold">{tasks.filter(t => !t.completed).length} tasks</span> pending.
+                    </p>
+                    <NeoButton 
+                        onClick={onAddMovie} 
+                        variant="accent"
+                        className="px-6 py-3.5 shadow-lg"
+                    >
+                        <Plus size={18} /> Add New Movie
+                    </NeoButton>
+                </div>
+                {/* Decorative Elements */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-pink-300 dark:bg-pink-700 rounded-full border-2 border-black dark:border-white -mr-16 -mt-16 opacity-100"></div>
+                <div className="absolute bottom-0 right-20 w-32 h-32 bg-blue-300 dark:bg-blue-700 rounded-full border-2 border-black dark:border-white translate-y-1/2"></div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Recent Entries */}
+                <div className="lg:col-span-2 space-y-4">
+                    <div className="flex justify-between items-end border-b-2 border-black/10 dark:border-white/20 pb-2">
+                        <h3 className="font-serif text-2xl font-bold bg-blue-100 dark:bg-blue-900 dark:text-white px-2 -ml-2 transform -skew-x-12 inline-block border border-black dark:border-white shadow-sm">
+                            <span className="block transform skew-x-12">Recent Entries</span>
+                        </h3>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {recentMovies.length > 0 ? recentMovies.map(movie => (
+                            <MovieCard key={movie.id} movie={movie} onClick={() => onMovieClick(movie)} />
+                        )) : (
+                            <div className="col-span-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-8 text-center text-gray-400 dark:text-gray-500 bg-white/50 dark:bg-gray-800/50">
+                                No movies added yet. Start your collection!
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Task Widget */}
+                <div className="lg:col-span-1 h-full min-h-[300px]">
+                     <TaskWidget tasks={tasks} setTasks={setTasks} />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const CollectionsView = ({ folders, onFolderClick, onAddFolder }) => (
+    <div className="animate-in fade-in duration-500">
+        <h3 className="font-serif text-3xl font-bold mb-6 dark:text-white">Collections</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+            {folders.map(folder => (
+                <NeoCard 
+                    key={folder.id} 
+                    onClick={() => onFolderClick(folder.name)}
+                    color={folder.color}
+                    className="aspect-[4/3] flex flex-col items-center justify-center gap-3 group"
+                >
+                    {/* Folder Tab Effect */}
+                    <div 
+                        className="absolute -top-3 left-0 w-1/2 h-4 rounded-t-lg border-2 border-b-0 border-black dark:border-white z-0 transition-colors"
+                        style={{ backgroundColor: folder.tabColor }}
+                    ></div>
+                    
+                    <div className="w-12 h-12 rounded-full bg-white/50 border-2 border-black dark:border-white flex items-center justify-center group-hover:scale-110 transition-transform text-black">
+                        {folder.icon === 'film' && <Film size={20} />}
+                        {folder.icon === 'star' && <Star size={20} />}
+                        {folder.icon === 'ghost' && <div className="text-lg">👻</div>}
+                        {folder.icon === 'heart' && <div className="text-lg">❤️</div>}
+                        {!folder.icon && <Folder size={20} />}
+                    </div>
+                    
+                    <div className="text-center z-10 text-black">
+                        <h4 className="font-serif font-bold text-lg leading-tight">{folder.name}</h4>
+                        <span className="text-[10px] font-mono border border-black dark:border-white px-1.5 py-0.5 rounded bg-white mt-1 inline-block">
+                            {folder.count} files
+                        </span>
+                    </div>
+                </NeoCard>
+            ))}
+            
+            <button 
+                onClick={onAddFolder}
+                className="aspect-[4/3] border-2 border-dashed border-gray-400 dark:border-gray-500 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-500 dark:text-gray-400 hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-800 transition-all"
+            >
+                <Plus size={32} />
+                <span className="font-bold text-sm">New Folder</span>
+            </button>
+        </div>
+    </div>
+);
+
+const DatabaseView = ({ movies, searchQuery, onMovieClick, isWatchlistMode }) => {
+    const filtered = movies.filter(m => {
+        const matchesSearch = m.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                              m.director?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesType = isWatchlistMode ? !m.watched : m.watched;
+        return matchesSearch && matchesType;
+    });
+
+    return (
+        <div className="animate-in fade-in duration-500">
+            <div className="flex justify-between items-center mb-6">
+                <h3 className="font-serif text-3xl font-bold dark:text-white">{isWatchlistMode ? 'Watchlist' : 'Database'}</h3>
+                <span className="text-sm font-mono bg-white dark:bg-gray-800 dark:text-white border border-black dark:border-white px-2 py-1 rounded shadow-sm">
+                    {filtered.length} Entries
+                </span>
             </div>
             
-            {isOpen && (
-                <div className="absolute top-full left-0 w-full mt-2 bg-white border-2 border-black rounded-xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] z-50 animate-in slide-in-from-top-2">
-                    <label className="text-[10px] font-bold uppercase text-gray-500 mb-2 block">Select Date</label>
-                    <input 
-                        type="date" 
-                        value={value} 
-                        onChange={handleDateChange}
-                        className="w-full p-2 border-2 border-gray-200 rounded-lg font-mono text-sm outline-none focus:border-black transition-colors"
-                    />
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-10">
+                {filtered.map(movie => (
+                    <MovieCard key={movie.id} movie={movie} onClick={() => onMovieClick(movie)} />
+                ))}
+            </div>
+            
+            {filtered.length === 0 && (
+                <div className="text-center py-20 opacity-50 dark:text-white">
+                    <Film size={48} className="mx-auto mb-4" />
+                    <p>No {isWatchlistMode ? 'watchlist items' : 'movies'} found matching "{searchQuery}"</p>
+                    <p className="text-xs mt-2">Try importing your CSV files via the "Sync Data" button in the sidebar.</p>
                 </div>
             )}
         </div>
     );
 };
 
-const TiltCard = ({ children }) => {
-  const [transform, setTransform] = useState('');
-  const handleMouseMove = (e) => {
-    const card = e.currentTarget;
-    const box = card.getBoundingClientRect();
-    const x = e.clientX - box.left;
-    const y = e.clientY - box.top;
-    const centerX = box.width / 2;
-    const centerY = box.height / 2;
-    const rotateX = (y - centerY) / 20;
-    const rotateY = (centerX - x) / 20;
-    setTransform(`perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`);
-  };
-  return (
-    <div 
-      onMouseMove={handleMouseMove} 
-      onMouseLeave={() => setTransform('')}
-      style={{ transform, transition: 'transform 0.15s ease-out', transformStyle: 'preserve-3d' }}
-      className="h-full w-full relative z-0 hover:z-30"
-    >
-      {children}
-    </div>
-  );
+const StatisticsView = ({ movies }) => {
+    const watchedMovies = movies.filter(m => m.watched);
+    const watchlistMovies = movies.filter(m => !m.watched);
+    
+    // Calculate simple stats
+    const totalWatched = watchedMovies.length;
+    
+    const genreCounts = {};
+    watchedMovies.forEach(m => {
+        const genre = m.genre?.split(',')[0].trim() || 'Unsorted';
+        genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+    });
+    
+    const sortedGenres = Object.entries(genreCounts).sort((a,b) => b[1] - a[1]).slice(0, 5);
+    const maxGenreCount = sortedGenres[0]?.[1] || 1;
+
+    return (
+        <div className="animate-in fade-in duration-500 space-y-6">
+            <h3 className="font-serif text-3xl font-bold dark:text-white">Statistics</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <NeoCard className="bg-[#FFD700] dark:bg-[#bfa200] flex flex-col items-center justify-center py-8">
+                    <Film size={40} className="mb-2 text-black" />
+                    <span className="text-5xl font-black text-black">{totalWatched}</span>
+                    <span className="text-sm font-bold uppercase tracking-widest mt-2 text-black">Films Watched</span>
+                 </NeoCard>
+                 <NeoCard className="bg-pink-300 dark:bg-pink-700 flex flex-col items-center justify-center py-8">
+                    <Eye size={40} className="mb-2 text-black dark:text-white" />
+                    <span className="text-5xl font-black text-black dark:text-white">{watchlistMovies.length}</span>
+                    <span className="text-sm font-bold uppercase tracking-widest mt-2 text-black dark:text-white">To Watch</span>
+                 </NeoCard>
+            </div>
+
+            <NeoCard className="p-8 bg-white dark:bg-gray-800">
+                <div className="flex items-center gap-2 mb-6 border-b-2 border-black/10 dark:border-white/10 pb-4">
+                     <BarChart3 size={24} />
+                     <h4 className="font-bold text-xl">Top Genres</h4>
+                </div>
+                <div className="space-y-6">
+                    {sortedGenres.map(([genre, count]) => (
+                        <div key={genre}>
+                            <div className="flex justify-between text-sm font-bold mb-2">
+                                <span>{genre}</span>
+                                <span>{count} films</span>
+                            </div>
+                            <div className="w-full bg-gray-100 dark:bg-gray-700 h-5 rounded-full overflow-hidden border border-black dark:border-white relative">
+                                <div 
+                                    className="h-full bg-black dark:bg-white transition-all duration-1000 relative" 
+                                    style={{ width: `${(count / maxGenreCount) * 100}%` }}
+                                >
+                                     {/* Striped Pattern Overlay */}
+                                     <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/diagmonds-light.png')]"></div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                    {sortedGenres.length === 0 && <p className="text-center opacity-50 italic">No data available. Add some watched movies!</p>}
+                </div>
+            </NeoCard>
+        </div>
+    );
 };
 
-// --- Sub-Components ---
+const IDCardView = ({ userData, setUserData }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [formData, setFormData] = useState(userData);
 
-const Sidebar = ({ activeTab, setActiveTab, darkMode, setDarkMode }) => (
-  <div className={`w-64 border-r-2 border-black flex flex-col h-screen fixed left-0 top-0 z-50 hidden md:flex font-sans transition-colors duration-300 ${darkMode ? 'bg-[#0f0c29] border-gray-700' : 'bg-white'}`}>
-    <div onClick={() => setActiveTab('dashboard')} className={`h-20 border-b-2 border-black flex items-center px-6 shrink-0 cursor-pointer transition-colors ${darkMode ? 'bg-[#1a1a2e] border-gray-700' : 'bg-[#FFD700] hover:bg-[#ffe033]'}`}>
-      <div className="flex items-center gap-2 group select-none">
-        <Clapperboard size={28} className={`fill-black text-black group-hover:animate-bounce ${darkMode ? 'text-white fill-white' : ''}`} />
-        <h1 className={`font-serif font-black text-2xl tracking-tight ${darkMode ? 'text-white' : 'text-black'}`}>CineFolder</h1>
-        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ml-1 group-hover:rotate-12 transition-transform ${darkMode ? 'bg-black text-yellow-400' : 'bg-black text-[#FFD700]'}`}>PRO</span>
-      </div>
-    </div>
+    const handleSave = () => {
+        setUserData(formData);
+        setIsEditing(false);
+    };
 
-    <nav className="flex-1 p-6 space-y-3 overflow-y-auto custom-scrollbar">
-      {[
-        { id: 'dashboard', label: 'Dashboard', icon: Grid },
-        { id: 'database', label: 'Film Database', icon: Film },
-        { id: 'watchlist', label: 'Watchlist', icon: Eye },
-        { id: 'collections', label: 'Collections', icon: Folder },
-        { id: 'journal', label: 'Journal', icon: BookOpen },
-        { id: 'admin', label: 'Admin Dashboard', icon: User },
-      ].map(item => (
-        <button
-          key={item.id}
-          onClick={() => setActiveTab(item.id)}
-          className={`
-            w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 font-bold text-sm transition-all duration-200
-            ${activeTab === item.id 
-              ? (darkMode ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-white/20 shadow-[0px_0px_15px_rgba(124,58,237,0.5)] translate-x-1' : 'bg-black text-white border-black shadow-[4px_4px_0px_0px_rgba(100,100,100,0.5)] translate-x-1') 
-              : (darkMode ? 'text-gray-300 border-transparent hover:border-gray-600 hover:bg-white/5' : 'bg-white text-gray-700 border-transparent hover:border-gray-200 hover:bg-gray-50 hover:translate-x-1')}
-          `}
-        >
-          <item.icon size={18} />
-          {item.label}
-        </button>
-      ))}
-    </nav>
+    return (
+        <div className="flex justify-center items-center h-[calc(100vh-200px)] animate-in zoom-in-95 duration-500">
+            <div className="relative group perspective-1000">
+                 {/* Lanyard String */}
+                 <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-4 h-32 bg-red-600 z-0 border-x-2 border-black"></div>
+                 
+                 {/* Badge */}
+                 <div className="relative w-[340px] h-[520px] bg-white dark:bg-gray-900 border-4 border-black dark:border-white rounded-3xl overflow-hidden shadow-[10px_10px_0px_0px_rgba(0,0,0,0.8)] dark:shadow-[10px_10px_0px_0px_rgba(255,255,255,0.8)] flex flex-col transition-transform duration-500">
+                     {/* Holo header */}
+                     <div className="h-24 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 flex items-center justify-center border-b-4 border-black dark:border-white relative overflow-hidden">
+                         <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/diagmonds-light.png')]"></div>
+                         <h2 className="font-serif font-black text-3xl text-white tracking-tighter drop-shadow-md relative z-10">CineFolder PRO</h2>
+                         
+                         <button 
+                             onClick={() => setIsEditing(!isEditing)}
+                             className="absolute top-2 right-2 p-1.5 bg-black/20 hover:bg-black/40 rounded-full text-white backdrop-blur-sm transition-colors"
+                         >
+                             <Edit3 size={16} />
+                         </button>
+                     </div>
+                     
+                     <div className="flex-1 flex flex-col items-center p-6 bg-[url('https://www.transparenttextures.com/patterns/graphy.png')] relative">
+                         <div className="w-32 h-32 rounded-full border-4 border-black dark:border-white overflow-hidden bg-yellow-400 mb-6 shadow-xl">
+                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.name}`} alt="avatar" className="w-full h-full object-cover" />
+                         </div>
+                         
+                         {isEditing ? (
+                            <div className="w-full space-y-2 mb-4">
+                                <input 
+                                    value={formData.name}
+                                    onChange={e => setFormData({...formData, name: e.target.value})}
+                                    className="w-full p-2 border-2 border-black text-center font-bold text-lg rounded bg-white text-black"
+                                    placeholder="Name"
+                                />
+                                <input 
+                                    value={formData.memberType}
+                                    onChange={e => setFormData({...formData, memberType: e.target.value})}
+                                    className="w-full p-2 border-2 border-black text-center font-bold text-xs rounded bg-white text-black uppercase"
+                                    placeholder="Member Type"
+                                />
+                            </div>
+                         ) : (
+                             <>
+                                <h1 className="font-black text-3xl uppercase mb-1 dark:text-white text-center leading-none tracking-tight">{userData.name}</h1>
+                                {/* Fixed Badge colors for visibility in dark mode */}
+                                <Badge color="bg-black text-white dark:bg-white dark:text-black mb-6 mt-2 shadow-sm">{userData.memberType}</Badge>
+                             </>
+                         )}
+                         
+                         <div className="w-full space-y-3 mt-auto bg-white/50 dark:bg-gray-800/80 p-4 rounded-xl border-2 border-black/10 dark:border-white/20 backdrop-blur-sm">
+                             <div className="flex justify-between items-center border-b border-dashed border-gray-400 dark:border-gray-500 pb-2">
+                                 <span className="font-mono text-gray-600 dark:text-gray-300 font-bold text-xs">ID NO.</span>
+                                 {isEditing ? (
+                                    <input 
+                                        value={formData.idNo}
+                                        onChange={e => setFormData({...formData, idNo: e.target.value})}
+                                        className="w-24 p-1 border border-black text-right font-mono font-bold text-xs rounded bg-white text-black"
+                                    />
+                                 ) : (
+                                     <span className="font-mono font-black dark:text-white">{userData.idNo}</span>
+                                 )}
+                             </div>
+                             <div className="flex justify-between items-center">
+                                 <span className="font-mono text-gray-600 dark:text-gray-300 font-bold text-xs">ISSUED</span>
+                                 {isEditing ? (
+                                    <input 
+                                        value={formData.issued}
+                                        onChange={e => setFormData({...formData, issued: e.target.value})}
+                                        className="w-24 p-1 border border-black text-right font-mono font-bold text-xs rounded bg-white text-black"
+                                    />
+                                 ) : (
+                                     <span className="font-mono font-black dark:text-white">{userData.issued}</span>
+                                 )}
+                             </div>
+                         </div>
+                         
+                         {isEditing && (
+                             <div className="mt-4 w-full">
+                                <NeoButton onClick={handleSave} variant="success" className="w-full py-2">Save Changes</NeoButton>
+                             </div>
+                         )}
+                         
+                         {!isEditing && (
+                             <div className="mt-6 w-full flex justify-center">
+                                 <div className="p-2 bg-white border-2 border-black rounded-lg">
+                                    <QrCode size={40} className="text-black" />
+                                 </div>
+                             </div>
+                         )}
+                     </div>
+                 </div>
+            </div>
+        </div>
+    );
+};
 
-    <div className="p-6 shrink-0 mt-auto">
-        <button 
-            onClick={() => setDarkMode(!darkMode)} 
-            className={`w-full mb-4 flex items-center justify-center gap-2 py-2 rounded-lg border-2 font-bold text-xs transition-all ${darkMode ? 'border-yellow-500 text-yellow-400 hover:bg-yellow-500/10' : 'border-black text-black hover:bg-gray-100'}`}
-        >
-            {darkMode ? <Sun size={14} /> : <Moon size={14} />}
-            {darkMode ? 'Light Mode' : 'Dark Mode'}
-        </button>
+// 5. MODALS
 
-      <div className={`rounded-xl p-4 border-2 shadow-lg relative overflow-hidden group cursor-pointer hover:scale-[1.02] transition-transform active:scale-95 ${darkMode ? 'bg-black border-gray-700 text-white' : 'bg-black text-white border-gray-800'}`}>
-         <div className="absolute inset-0 bg-gradient-to-r from-pink-500 to-purple-500 opacity-20 group-hover:opacity-30 transition-opacity"></div>
-         <div className="relative z-10 flex items-center gap-3">
-           <div className="w-10 h-10 rounded-full bg-[#FFD700] flex items-center justify-center text-black animate-spin-slow shrink-0">
-             <Music size={16} />
-           </div>
-           <div className="overflow-hidden">
-             <p className="text-[10px] font-bold opacity-60 uppercase tracking-wider">Now Playing</p>
-             <p className="text-xs font-bold truncate">Cornfield Chase</p>
-           </div>
-         </div>
-      </div>
-    </div>
-  </div>
-);
+const DataSyncModal = ({ isOpen, onClose, onSync }) => {
+    const fileInputRefDB = useRef(null);
+    const fileInputRefWL = useRef(null);
+    const [loading, setLoading] = useState(false);
 
-// New Mobile Bottom Navigation
-const BottomNav = ({ activeTab, setActiveTab, darkMode }) => (
-    <div className={`md:hidden fixed bottom-0 left-0 w-full h-20 border-t-2 border-black z-50 flex justify-around items-center px-2 pb-2 ${darkMode ? 'bg-[#0f0c29] border-gray-700' : 'bg-white'}`}>
-        {[
-            { id: 'dashboard', icon: Grid, label: 'Dash' },
-            { id: 'database', icon: Film, label: 'Films' },
-            { id: 'watchlist', icon: Eye, label: 'List' },
-            { id: 'collections', icon: Folder, label: 'Folders' },
-            { id: 'admin', icon: User, label: 'Profile' },
-        ].map(item => (
-            <button 
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`flex flex-col items-center justify-center w-14 h-14 rounded-xl transition-all ${activeTab === item.id ? (darkMode ? 'text-yellow-400 bg-white/10' : 'text-black bg-gray-100') : (darkMode ? 'text-gray-500' : 'text-gray-400')}`}
-            >
-                <item.icon size={20} strokeWidth={activeTab === item.id ? 3 : 2} />
-                <span className="text-[9px] font-bold mt-1">{item.label}</span>
-            </button>
-        ))}
-    </div>
-);
+    const handleFileUpload = (isWatchlist) => {
+        const inputRef = isWatchlist ? fileInputRefWL : fileInputRefDB;
+        const file = inputRef.current.files[0];
+        if (file) {
+            setLoading(true);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                onSync(e.target.result, isWatchlist);
+                setLoading(false);
+            };
+            reader.readAsText(file);
+        }
+    };
 
-const TopBar = ({ title, user, searchQuery, setSearchQuery, setShowAddModal, movies, darkMode, setActiveTab, activeTab }) => {
-    const searchRef = useRef(null);
-    const [showResults, setShowResults] = useState(false);
-    const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+    if (!isOpen) return null;
 
-    const filteredResults = movies.filter(m => 
-        m.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        m.director.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (m.notes && m.notes.toLowerCase().includes(searchQuery.toLowerCase()))
-    ).slice(0, 3);
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[120] flex items-center justify-center p-4 animate-in zoom-in-95 duration-200">
+            <div className="w-full max-w-lg bg-white dark:bg-gray-900 border-4 border-black dark:border-white rounded-3xl shadow-2xl overflow-hidden relative">
+                <div className="bg-blue-100 dark:bg-blue-900 border-b-2 border-black dark:border-white p-4 flex justify-between items-center">
+                    <h3 className="font-serif text-xl font-bold flex items-center gap-2 dark:text-white">
+                        <Upload size={20} /> Sync Data
+                    </h3>
+                    <button onClick={onClose} className="bg-red-500 hover:bg-red-600 text-white rounded-full p-1 border-2 border-black dark:border-white hover:rotate-90 transition-transform">
+                        <X size={20} strokeWidth={3} />
+                    </button>
+                </div>
+                
+                <div className="p-8 space-y-6">
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                        Import your existing CSV files. The app will automatically fetch covers for titles without images in the background.
+                    </p>
+
+                    <div className="space-y-4">
+                        <div className="border-2 border-dashed border-black dark:border-white rounded-xl p-4 bg-gray-50 dark:bg-gray-800 hover:bg-white dark:hover:bg-gray-700 transition-colors">
+                            <div className="flex items-center gap-3 mb-2">
+                                <FileSpreadsheet className="text-green-600 dark:text-green-400" size={24} />
+                                <div className="dark:text-white">
+                                    <h4 className="font-bold text-sm">Database CSV</h4>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Watched films</p>
+                                </div>
+                            </div>
+                            <input 
+                                type="file" 
+                                accept=".csv"
+                                ref={fileInputRefDB}
+                                onChange={() => handleFileUpload(false)}
+                                disabled={loading}
+                                className="w-full text-xs font-bold file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-2 file:border-black dark:file:border-white file:text-xs file:font-bold file:bg-white dark:file:bg-black file:text-black dark:file:text-white hover:file:bg-black hover:file:text-white transition-all cursor-pointer"
+                            />
+                        </div>
+
+                        <div className="border-2 border-dashed border-black dark:border-white rounded-xl p-4 bg-gray-50 dark:bg-gray-800 hover:bg-white dark:hover:bg-gray-700 transition-colors">
+                            <div className="flex items-center gap-3 mb-2">
+                                <FileSpreadsheet className="text-purple-600 dark:text-purple-400" size={24} />
+                                <div className="dark:text-white">
+                                    <h4 className="font-bold text-sm">Watchlist CSV</h4>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Films to watch</p>
+                                </div>
+                            </div>
+                            <input 
+                                type="file" 
+                                accept=".csv"
+                                ref={fileInputRefWL}
+                                onChange={() => handleFileUpload(true)}
+                                disabled={loading}
+                                className="w-full text-xs font-bold file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-2 file:border-black dark:file:border-white file:text-xs file:font-bold file:bg-white dark:file:bg-black file:text-black dark:file:text-white hover:file:bg-black hover:file:text-white transition-all cursor-pointer"
+                            />
+                        </div>
+                    </div>
+                    {loading && <div className="text-center font-bold text-blue-600 animate-pulse">Processing...</div>}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const MovieDetailModal = ({ movie, onClose, onEdit }) => {
+    if (!movie) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-3xl bg-white dark:bg-gray-900 border-4 border-black dark:border-white rounded-3xl shadow-[8px_8px_0px_0px_rgba(255,255,255,0.5)] overflow-hidden flex flex-col md:flex-row max-h-[90vh]">
+                
+                {/* Poster Section */}
+                <div className="w-full md:w-2/5 bg-gray-100 dark:bg-gray-800 border-b-2 md:border-b-0 md:border-r-2 border-black dark:border-white relative min-h-[300px]">
+                    <img 
+                        src={movie.poster !== 'N/A' ? movie.poster : 'https://placehold.co/400x600?text=No+Poster'} 
+                        className="w-full h-full object-cover absolute inset-0"
+                        alt="Poster" 
+                        onError={(e) => { e.target.src = 'https://placehold.co/400x600?text=No+Poster'; }}
+                    />
+                    <button className="absolute top-4 right-4 bg-black/50 hover:bg-black text-white p-2 rounded-full backdrop-blur-md transition-colors">
+                         <ExternalLink size={16} />
+                    </button>
+                    {!movie.watched && (
+                        <div className="absolute top-4 left-4">
+                            <Badge color="bg-green-400 text-black border-black shadow-md">To Watch</Badge>
+                        </div>
+                    )}
+                </div>
+
+                {/* Content Section */}
+                <div className="flex-1 p-6 md:p-8 flex flex-col overflow-y-auto bg-[#Fdfdfd] dark:bg-gray-900">
+                    <div className="flex justify-between items-start mb-2">
+                        <Badge color="bg-yellow-200 text-yellow-900 border-yellow-900">{movie.director || 'Unknown Director'}</Badge>
+                        <button onClick={onClose} className="bg-red-500 hover:bg-red-600 text-white rounded-full p-1 border-2 border-black dark:border-white transition-all">
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <h2 className="font-serif text-3xl md:text-4xl font-black mb-2 leading-tight dark:text-white">{movie.title}</h2>
+                    <p className="text-gray-500 dark:text-gray-400 font-medium mb-6">{movie.year} • {movie.genre || 'Film'} • {movie.runtime || 'N/A'}</p>
+
+                    {movie.watched ? (
+                        <div className="flex items-center gap-1 mb-6">
+                            {[1, 2, 3, 4, 5].map(star => (
+                                <Star 
+                                    key={star} 
+                                    size={24} 
+                                    className={`${star <= Math.round(movie.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 dark:text-gray-600'}`} 
+                                />
+                            ))}
+                            <span className="ml-2 font-bold text-lg dark:text-white">{movie.rating}/5</span>
+                        </div>
+                    ) : (
+                        <div className="mb-6 bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-200 dark:border-blue-700 p-3 rounded-lg text-blue-800 dark:text-blue-300 text-sm font-bold flex items-center gap-2">
+                            <Eye size={16} /> In Watchlist
+                        </div>
+                    )}
+
+                    <div className="bg-yellow-50 dark:bg-yellow-900/10 border-2 border-dashed border-black/20 dark:border-white/20 p-4 rounded-xl mb-8 relative">
+                         <span className="absolute -top-3 left-4 bg-yellow-300 border border-black px-2 py-0.5 text-[10px] font-bold uppercase text-black">My Notes</span>
+                         <p className="font-serif italic text-lg text-gray-800 dark:text-gray-300 leading-relaxed">
+                            "{movie.notes || 'No notes added yet.'}"
+                         </p>
+                    </div>
+
+                    <div className="mt-auto pt-4 flex gap-4">
+                        <NeoButton onClick={() => onEdit(movie)} variant="primary" className="flex-1 py-3 text-base">
+                            <Edit3 size={18} /> Edit Entry
+                        </NeoButton>
+                        <NeoButton variant="danger" className="px-4">
+                            <Trash2 size={18} />
+                        </NeoButton>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const EditEntryModal = ({ movie, isOpen, onClose, onSave }) => {
+    const [formData, setFormData] = useState({
+        title: '', year: '', director: '', rating: 0, notes: '', poster: '', folder: '', watched: true
+    });
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        function handleClickOutside(event) {
-            if (searchRef.current && !searchRef.current.contains(event.target)) {
-                setShowResults(false);
-            }
+        if (movie) {
+            setFormData(movie);
+        } else {
+            setFormData({ title: '', year: new Date().getFullYear(), director: '', rating: 0, notes: '', poster: '', folder: '', watched: true });
         }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [searchRef]);
+    }, [movie, isOpen]);
 
-    // Handle "View All" click
-    const handleViewAll = () => {
-        setActiveTab('database');
-        setShowResults(false);
+    const handleFetch = async () => {
+        if (!formData.title) return;
+        setLoading(true);
+        try {
+            const res = await fetch(`https://www.omdbapi.com/?t=${encodeURIComponent(formData.title)}&apikey=${OMDB_API_KEY}`);
+            const data = await res.json();
+            if (data.Response === 'True') {
+                setFormData(prev => ({
+                    ...prev,
+                    title: data.Title,
+                    year: parseInt(data.Year) || prev.year,
+                    director: data.Director,
+                    poster: data.Poster,
+                    runtime: data.Runtime,
+                    genre: data.Genre
+                }));
+            }
+        } catch (e) {
+            console.error(e);
+        }
+        setLoading(false);
     };
 
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSave({ ...formData, id: movie?.id || generateId(), addedAt: movie?.addedAt || new Date().toISOString() });
+    };
+
+    if (!isOpen) return null;
+
     return (
-      <div className={`h-20 border-b-2 flex items-center justify-between px-6 md:px-8 sticky top-0 z-40 shadow-sm shrink-0 transition-colors duration-300 ${darkMode ? 'bg-[#0f0c29] border-gray-700' : 'bg-white border-black'}`}>
-        {/* Mobile Header */}
-        <div className="flex items-center gap-3 md:hidden">
-            <div className="w-8 h-8 bg-[#FFD700] rounded-lg border-2 border-black flex items-center justify-center">
-                <Clapperboard size={16} className="text-black" />
-            </div>
-            <h2 className={`font-serif text-xl font-bold ${darkMode ? 'text-white' : 'text-black'}`}>{title}</h2>
-        </div>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-in zoom-in-95 duration-200">
+            <div className="w-full max-w-lg bg-white dark:bg-gray-900 border-4 border-black dark:border-white rounded-3xl shadow-2xl overflow-hidden relative">
+                <div className="bg-[#00Dfa2] border-b-2 border-black dark:border-white p-4 flex justify-between items-center">
+                    <h3 className="font-serif text-xl font-bold flex items-center gap-2 text-black">
+                        {movie ? <Edit3 size={20} /> : <Plus size={20} />}
+                        {movie ? 'Edit Entry' : 'New Log'}
+                    </h3>
+                    <button onClick={onClose} className="bg-red-500 hover:bg-red-600 text-white rounded-full p-1 border-2 border-black dark:border-white hover:rotate-90 transition-transform">
+                        <X size={20} strokeWidth={3} />
+                    </button>
+                </div>
 
-        {/* Desktop Title */}
-        <h2 className={`font-serif text-3xl font-bold animate-in slide-in-from-top-4 hidden md:block ${darkMode ? 'text-white' : 'text-black'}`}>{title}</h2>
-        
-        <div className="flex items-center gap-4 relative">
-          
-          {/* Mobile Search Toggle */}
-          <button onClick={() => setMobileSearchOpen(!mobileSearchOpen)} className={`md:hidden p-2 rounded-full ${darkMode ? 'text-white' : 'text-black'}`}>
-              <Search size={20} />
-          </button>
-
-          {/* Desktop Search */}
-          <div className="relative hidden md:block group z-50" ref={searchRef}>
-             <input 
-               value={searchQuery}
-               onFocus={() => setShowResults(true)}
-               onChange={(e) => { setSearchQuery(e.target.value); setShowResults(true); }}
-               placeholder="Search database..." 
-               className={`pl-11 pr-4 py-2.5 rounded-full border-2 font-medium transition-all w-72 text-sm focus:outline-none focus:w-96 ${darkMode ? 'bg-white/10 border-gray-600 text-white focus:bg-gray-800 shadow-none' : 'bg-gray-50 border-black focus:shadow-[4px_4px_0px_0px_#000] focus:bg-white'}`}
-             />
-             <Search size={18} className="absolute left-4 top-3 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
-             
-             {showResults && searchQuery.length > 0 && (
-                <div className="absolute top-16 right-0 w-96 animate-in slide-in-from-top-2 fade-in duration-300 z-[60]">
-                    <div className={`border-2 rounded-xl p-3 shadow-xl ${darkMode ? 'bg-[#24243e] border-gray-600' : 'bg-white border-black'}`}>
-                        <div className="flex items-center justify-between mb-2 px-2">
-                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">Quick Results</span>
-                            <button className="text-[10px] font-bold text-purple-500 cursor-pointer hover:underline" onClick={handleViewAll}>View All</button>
+                <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                    {/* Fetcher */}
+                    <div className="flex gap-2">
+                        <div className="flex-1">
+                            <label className="text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400 tracking-wider mb-1 block">Movie Title</label>
+                            <input 
+                                value={formData.title}
+                                onChange={e => setFormData({...formData, title: e.target.value})}
+                                className="w-full p-2.5 border-2 border-black dark:border-white rounded-lg font-bold outline-none focus:bg-yellow-50 dark:focus:bg-gray-800 transition-colors bg-white dark:bg-gray-800 dark:text-white"
+                                placeholder="e.g. Interstellar"
+                            />
                         </div>
-                        {filteredResults.length > 0 ? filteredResults.map(m => (
-                            <div key={m.id} onClick={() => { setSearchQuery(m.title); setShowResults(false); setActiveTab('database'); }} className={`p-2 rounded-lg cursor-pointer flex items-center gap-3 mb-1 transition-colors ${darkMode ? 'hover:bg-white/5' : 'hover:bg-gray-100'}`}>
-                                <div className="w-8 h-10 bg-gray-200 rounded overflow-hidden flex-shrink-0">
-                                    <img src={m.poster} className="w-full h-full object-cover" onError={(e) => e.target.src='https://placehold.co/100x150?text=NA'} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className={`text-sm font-bold truncate ${darkMode ? 'text-white' : 'text-black'}`}>{m.title}</p>
-                                    <p className="text-[10px] opacity-60">{m.year} • {m.type}</p>
-                                </div>
-                                <ArrowRight size={14} className="ml-auto opacity-50" />
-                            </div>
-                        )) : (
-                            <div className="p-4 text-xs opacity-50 text-center font-bold">No results found for "{searchQuery}"</div>
-                        )}
-                    </div>
-                </div>
-             )}
-          </div>
-    
-          <button onClick={() => setShowAddModal(true)} className={`hidden md:flex w-10 h-10 rounded-full border-2 items-center justify-center hover:scale-110 transition-transform active:shadow-none active:translate-y-0.5 ${darkMode ? 'bg-purple-600 border-white/20 text-white shadow-[0_0_10px_rgba(147,51,234,0.5)]' : 'bg-pink-400 border-black text-black shadow-[2px_2px_0px_0px_#000]'}`}>
-             <Plus size={20} strokeWidth={3} />
-          </button>
-    
-          <div onClick={() => setActiveTab('admin')} className={`hidden md:flex items-center gap-3 border-2 rounded-full pl-1.5 pr-5 py-1.5 cursor-pointer transition-all active:translate-y-0.5 active:shadow-none ${darkMode ? 'bg-white/10 border-white/20 hover:bg-white/20' : 'bg-white border-black hover:bg-gray-50 hover:shadow-[3px_3px_0px_0px_#000]'}`}>
-            <div className={`${user?.avatar?.color || 'bg-gray-200'} w-9 h-9 rounded-full border border-black flex items-center justify-center text-xl shadow-sm`}>
-              {user?.avatar?.icon || '👤'}
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className={`text-[9px] font-black uppercase tracking-wider mb-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user?.role || 'User'}</span>
-              <span className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-black'}`}>{user?.name || 'Admin'}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Search Overlay */}
-        {mobileSearchOpen && (
-            <div className="absolute top-20 left-0 w-full bg-white border-b-2 border-black p-4 z-50 animate-in slide-in-from-top-2">
-                <input 
-                    autoFocus
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search..." 
-                    className="w-full p-3 border-2 border-black rounded-xl font-bold outline-none"
-                />
-                {searchQuery && (
-                    <div className="mt-2 space-y-2">
-                        {filteredResults.map(m => (
-                            <div key={m.id} onClick={() => { setSearchQuery(m.title); setMobileSearchOpen(false); setActiveTab('database'); }} className="p-2 border-b flex justify-between">
-                                <span>{m.title}</span>
-                                <span className="text-gray-400 text-xs">Go</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-        )}
-      </div>
-    );
-};
-
-const Dashboard = ({ movies, watchlist, user, setActiveTab, setShowAddModal, darkMode }) => {
-    const [spinResult, setSpinResult] = useState('???');
-    const [isSpinning, setIsSpinning] = useState(false);
-
-    const handleSpin = () => {
-        setIsSpinning(true);
-        let count = 0;
-        const interval = setInterval(() => {
-          setSpinResult(ROULETTE_OPTIONS[Math.floor(Math.random() * ROULETTE_OPTIONS.length)]);
-          count++;
-          if (count > 15) {
-            clearInterval(interval);
-            setIsSpinning(false);
-          }
-        }, 100);
-    };
-
-    // Calculate Streak (Simulated for Demo)
-    const streak = 12; 
-
-    return (
-      <div className="p-4 md:p-8 space-y-6 md:space-y-10 animate-in fade-in duration-500 max-w-[1600px] mx-auto">
-        
-        {/* Welcome Hero */}
-        <div className="flex flex-col md:flex-row gap-6 md:gap-8">
-            <div className={`flex-1 rounded-3xl p-6 md:p-8 border-2 relative overflow-hidden ${darkMode ? 'bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 border-indigo-500 text-white' : 'bg-black text-white border-black'}`}>
-                <div className="relative z-10">
-                    <h2 className="font-serif text-3xl md:text-4xl font-bold mb-2">Welcome back, {user?.name || 'Friend'}.</h2>
-                    <p className="opacity-80 max-w-md mb-6 font-medium text-sm md:text-base">You've watched {movies.length} titles. Keep the streak alive!</p>
-                    <div className="flex gap-3 md:gap-4">
-                        <button onClick={() => setShowAddModal(true)} className={`px-4 md:px-6 py-3 rounded-xl font-bold text-xs md:text-sm flex items-center gap-2 hover:scale-105 transition-transform ${darkMode ? 'bg-white text-black' : 'bg-white text-black'}`}>
-                            <Plus size={16} /> Log Entry
-                        </button>
-                        <button onClick={() => setActiveTab('database')} className={`px-4 md:px-6 py-3 rounded-xl font-bold text-xs md:text-sm flex items-center gap-2 border-2 hover:bg-white/10 transition-colors ${darkMode ? 'border-white/30 text-white' : 'border-white text-white'}`}>
-                            <Film size={16} /> Browse DB
+                        <button 
+                            type="button" 
+                            onClick={handleFetch}
+                            disabled={loading || !formData.title}
+                            className="mt-6 px-4 bg-blue-500 text-white font-bold rounded-lg border-2 border-black dark:border-white shadow-[2px_2px_0px_0px_#000] dark:shadow-[2px_2px_0px_0px_#fff] active:translate-y-0.5 active:shadow-none transition-all disabled:opacity-50"
+                        >
+                            {loading ? <Sparkles className="animate-spin" size={16}/> : 'Fetch'}
                         </button>
                     </div>
-                </div>
-                <Sparkles className="absolute top-4 right-4 opacity-20" size={120} />
-            </div>
 
-            {/* Decision Paralysis Widget (Restored) */}
-            <NeoCard className={`w-full md:w-1/3 flex flex-col items-center justify-center text-center p-6 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all ${darkMode ? 'bg-[#24243e] border-gray-600' : 'bg-gradient-to-br from-pink-50 to-blue-50 border-black'}`}>
-                <h3 className={`font-bold mb-2 text-[10px] uppercase tracking-[0.2em] ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Decision Paralysis?</h3>
-                <div className="h-16 md:h-20 flex items-center justify-center my-2 relative w-full">
-                    <div className={`absolute inset-0 rounded-full blur-2xl transition-colors ${isSpinning ? 'bg-purple-500/20' : 'bg-transparent'}`}></div>
-                    <div className={`font-serif text-2xl md:text-3xl font-black relative z-10 transition-all ${isSpinning ? 'text-purple-600 scale-110' : darkMode ? 'text-white' : 'text-black'}`}>
-                        {spinResult}
+                    <div className="flex items-center gap-2 mb-2">
+                         <label className="flex items-center gap-2 cursor-pointer select-none border-2 border-black dark:border-white rounded-lg p-2 flex-1 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-white">
+                            <input 
+                                type="checkbox" 
+                                checked={formData.watched} 
+                                onChange={e => setFormData({...formData, watched: e.target.checked})}
+                                className="accent-black dark:accent-white w-5 h-5"
+                            />
+                            <span className="font-bold text-sm">Watched</span>
+                         </label>
                     </div>
-                </div>
-                <button 
-                    onClick={handleSpin}
-                    disabled={isSpinning}
-                    className={`w-full font-black text-xs py-3.5 rounded-xl uppercase tracking-widest transition-all shadow-md active:translate-y-0.5 active:shadow-none ${darkMode ? 'bg-purple-600 text-white hover:bg-purple-500' : 'bg-black text-white hover:bg-gray-800'}`}
-                >
-                    {isSpinning ? 'Spinning...' : 'Spin Genre'}
-                </button>
-            </NeoCard>
-        </div>
-    
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
-          <div className="xl:col-span-2 space-y-6">
-            <div className="flex justify-between items-end">
-                <h3 className={`font-serif text-2xl font-bold flex items-center gap-2 ${darkMode ? 'text-white' : 'text-black'}`}>
-                    Recent Activity
-                </h3>
-                <span className="text-xs font-bold text-purple-500 cursor-pointer hover:underline" onClick={() => setActiveTab('database')}>See all</span>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {movies.slice(0, 4).map(movie => (
-                    <NeoCard key={movie.id} className={`flex gap-5 p-4 cursor-pointer group h-full items-center ${darkMode ? 'bg-[#1a1a2e] border-gray-600 hover:bg-[#202040]' : 'bg-white hover:bg-gray-50'}`}>
-                    <div className={`overflow-hidden rounded-lg border-2 shadow-sm w-20 h-28 flex-shrink-0 relative ${darkMode ? 'border-gray-500' : 'border-black'}`}>
-                        <img 
-                            src={movie.poster} 
-                            onError={(e) => { e.target.src='https://placehold.co/300x450/pink/black?text=No+Img'; }}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400 tracking-wider mb-1 block">Year</label>
+                            <input 
+                                type="number"
+                                value={formData.year}
+                                onChange={e => setFormData({...formData, year: e.target.value})}
+                                className="w-full p-2.5 border-2 border-black dark:border-white rounded-lg font-bold outline-none bg-white dark:bg-gray-800 dark:text-white"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400 tracking-wider mb-1 block">Director</label>
+                            <input 
+                                value={formData.director}
+                                onChange={e => setFormData({...formData, director: e.target.value})}
+                                className="w-full p-2.5 border-2 border-black dark:border-white rounded-lg font-bold outline-none bg-white dark:bg-gray-800 dark:text-white"
+                            />
+                        </div>
+                    </div>
+
+                    {formData.watched && (
+                        <div>
+                            <label className="text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400 tracking-wider mb-1 block">Rating</label>
+                            <div className="flex items-center gap-4 border-2 border-black dark:border-white p-3 rounded-xl bg-gray-50 dark:bg-gray-800">
+                                <input 
+                                    type="range" min="0" max="5" step="0.5"
+                                    value={formData.rating}
+                                    onChange={e => setFormData({...formData, rating: parseFloat(e.target.value)})}
+                                    className="flex-1 accent-black dark:accent-white h-2 bg-gray-300 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                                />
+                                <div className="bg-yellow-400 border border-black px-2 py-1 rounded font-black min-w-[3rem] text-center text-black">
+                                    {formData.rating}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div>
+                        <label className="text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400 tracking-wider mb-1 block">Collection</label>
+                        <select 
+                            value={formData.folder || ''} 
+                            onChange={e => setFormData({...formData, folder: e.target.value})}
+                            className="w-full p-2.5 border-2 border-black dark:border-white rounded-lg font-bold outline-none bg-white dark:bg-gray-800 dark:text-white"
+                        >
+                            <option value="">No Collection</option>
+                            <option value="Ghibli Vibes">Ghibli Vibes</option>
+                            <option value="Wes Anderson">Wes Anderson</option>
+                            <option value="Horror 2025">Horror 2025</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="text-[10px] font-bold uppercase text-gray-500 dark:text-gray-400 tracking-wider mb-1 block">Notes / Review</label>
+                        <textarea 
+                            value={formData.notes}
+                            onChange={e => setFormData({...formData, notes: e.target.value})}
+                            rows={3}
+                            className="w-full p-2.5 border-2 border-black dark:border-white rounded-lg font-medium outline-none resize-none bg-white dark:bg-gray-800 dark:text-white"
+                            placeholder="What did you think?"
                         />
                     </div>
-                    <div className="flex flex-col justify-center py-1 min-w-0 h-full flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                            <Badge color={movie.type === 'TV Series' ? 'purple' : 'green'}>{movie.type === 'TV Series' ? 'SERIES' : 'FILM'}</Badge>
-                            <span className="text-[10px] font-bold text-gray-400">{movie.year}</span>
-                        </div>
-                        <h4 className={`font-bold text-lg leading-tight truncate font-serif mb-2 ${darkMode ? 'text-white' : 'text-black'}`}>{movie.title}</h4>
-                        <div className="flex items-center gap-1 text-yellow-500">
-                            <Star size={12} fill="currentColor"/> <span className={`text-xs font-bold ${darkMode ? 'text-gray-300' : 'text-black'}`}>{movie.rating}</span>
-                        </div>
+
+                    <div className="pt-2">
+                        <NeoButton type="submit" className="w-full py-4 text-base bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black">
+                            <Save size={18} /> Save Entry
+                        </NeoButton>
                     </div>
-                    </NeoCard>
-                ))}
-            </div>
-          </div>
-    
-          <div className="space-y-6">
-            <h3 className={`font-serif text-2xl font-bold ${darkMode ? 'text-white' : 'text-black'}`}>Stats</h3>
-            
-            {/* Streak Widget */}
-            <NeoCard className={`p-5 ${darkMode ? 'bg-[#1a1a2e] border-gray-600' : 'bg-white border-black'}`}>
-                <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-orange-100 text-orange-600"><Award size={18} /></div>
-                        <div>
-                            <p className="text-[10px] font-bold uppercase opacity-60">Cinema Level</p>
-                            <p className={`font-bold text-lg leading-none ${darkMode ? 'text-white' : 'text-black'}`}>Level {Math.floor(movies.length / 5) + 1}</p>
-                        </div>
-                    </div>
-                </div>
-                <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden mt-2">
-                    <div className="h-full bg-orange-500 w-[60%]"></div>
-                </div>
-            </NeoCard>
-
-            {/* Watchlist Glance */}
-            <div className={`rounded-xl border-2 overflow-hidden ${darkMode ? 'bg-[#1a1a2e] border-gray-600' : 'bg-white border-black'}`}>
-                <div className={`p-3 text-xs font-bold uppercase border-b-2 flex justify-between ${darkMode ? 'bg-gray-800 border-gray-600' : 'bg-gray-100 border-black'}`}>
-                    <span>Up Next</span>
-                    <span className="text-purple-500">{watchlist.length}</span>
-                </div>
-                {watchlist.slice(0, 3).map((item, idx) => (
-                    <div key={item.id} className={`p-3 flex items-center justify-between ${idx !== watchlist.slice(0,3).length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''}`}>
-                        <div className="flex items-center gap-3">
-                            <div className={`w-2 h-2 rounded-full ${idx === 0 ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                            <span className={`text-sm font-bold truncate max-w-[150px] ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>{item.title}</span>
-                        </div>
-                    </div>
-                ))}
-                <div onClick={() => setActiveTab('watchlist')} className={`p-3 text-center text-xs font-bold uppercase tracking-widest cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 border-t-2 ${darkMode ? 'border-gray-600 text-gray-400' : 'border-black text-gray-500'}`}>
-                    View All
-                </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-};
-
-const FilmDatabase = ({ movies, darkMode, searchQuery, currentFolder, clearFolderFilter }) => {
-    let filtered = movies.filter(m => 
-        m.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        m.director.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (m.notes && m.notes.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-    
-    if (currentFolder) {
-        filtered = filtered.filter(m => m.folder === currentFolder);
-    }
-    
-    const [sortMethod, setSortMethod] = useState('date'); // 'date' or 'rating'
-
-    const sorted = [...filtered].sort((a, b) => {
-        if (sortMethod === 'rating') return b.rating - a.rating;
-        return new Date(b.date) - new Date(a.date);
-    });
-
-    return (
-        <div className="p-4 md:p-8 animate-in fade-in duration-500 max-w-[1600px] mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                <div className="flex flex-wrap items-center gap-4">
-                    <h3 className={`font-serif text-3xl font-bold ${darkMode ? 'text-white' : 'text-black'}`}>Film Database</h3>
-                    {currentFolder && (
-                        <div className="flex items-center gap-2 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-bold border border-purple-200">
-                            Folder: {currentFolder}
-                            <X size={14} className="cursor-pointer hover:text-purple-900" onClick={clearFolderFilter} />
-                        </div>
-                    )}
-                </div>
-                <div className="flex gap-2">
-                    <button onClick={() => setSortMethod(sortMethod === 'date' ? 'rating' : 'date')} className={`flex items-center gap-2 px-3 py-1.5 border-2 rounded-lg font-bold text-sm transition-all ${darkMode ? 'border-gray-600 text-white hover:bg-gray-800' : 'border-black bg-white hover:bg-gray-50'}`}>
-                        <SortAsc size={14} /> {sortMethod === 'date' ? 'Sort: Date' : 'Sort: Rating'}
-                    </button>
-                </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {sorted.map(movie => (
-                    <NeoCard key={movie.id} className={`group ${darkMode ? 'bg-[#1a1a2e] border-gray-600' : 'bg-white'}`}>
-                        <div className="aspect-[2/3] overflow-hidden rounded-lg border-2 border-black/10 relative mb-3">
-                            <img src={movie.poster} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => { e.target.src='https://placehold.co/300x450/pink/black?text=No+Img'; }} />
-                            <div className="absolute top-2 right-2">
-                                <Badge color="yellow">{movie.rating}</Badge>
-                            </div>
-                            <button className="absolute bottom-2 right-2 bg-white/80 p-1.5 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white hover:scale-110">
-                                <Heart size={16} fill="currentColor" />
-                            </button>
-                        </div>
-                        <h4 className={`font-bold truncate ${darkMode ? 'text-white' : 'text-black'}`}>{movie.title}</h4>
-                        <p className="text-xs text-gray-500">{movie.year} • {movie.director}</p>
-                        <div className="mt-2 flex gap-1 flex-wrap">
-                            <span className="text-[10px] border px-1 rounded opacity-50 dark:border-gray-500 dark:text-gray-400">{movie.folder || 'Unsorted'}</span>
-                        </div>
-                    </NeoCard>
-                ))}
-                {sorted.length === 0 && <div className="col-span-full text-center py-20 text-gray-500 italic">No movies found.</div>}
-            </div>
-        </div>
-    );
-};
-
-const Watchlist = ({ watchlist, darkMode, setShowAddModal, setIsWatchlistMode, onDelete }) => {
-    return (
-        <div className="p-4 md:p-8 animate-in fade-in duration-500 max-w-[1600px] mx-auto">
-            <div className="flex items-center justify-between mb-8">
-                <h3 className={`font-serif text-3xl font-bold ${darkMode ? 'text-white' : 'text-black'}`}>Watchlist</h3>
-                <button onClick={() => { setIsWatchlistMode(true); setShowAddModal(true); }} className="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-purple-500 transition-colors shadow-lg hover:shadow-purple-500/50">
-                    <Plus size={16}/> Add Title
-                </button>
-            </div>
-            
-            <div className="space-y-4">
-                {watchlist.map(item => (
-                    <div key={item.id} className={`flex items-center gap-4 p-4 border-2 rounded-xl transition-transform hover:translate-x-1 ${darkMode ? 'bg-[#1a1a2e] border-gray-600 text-white' : 'bg-white border-black'}`}>
-                        <div className="w-12 h-16 bg-gray-200 rounded overflow-hidden flex-shrink-0">
-                            <img src={item.poster} className="w-full h-full object-cover" onError={(e) => { e.target.src='https://placehold.co/300x450/pink/black?text=No+Img'; }}/>
-                        </div>
-                        <div className="flex-1">
-                            <h4 className="font-bold text-lg">{item.title}</h4>
-                            <p className="text-xs opacity-60">{item.year} • {item.type}</p>
-                        </div>
-                        <button onClick={() => onDelete(item.id)} className={`px-4 py-2 rounded-lg font-bold text-xs border-2 flex items-center gap-2 transition-all active:translate-y-0.5 ${darkMode ? 'bg-green-600 border-green-800 text-white hover:bg-green-500' : 'bg-[#00Dfa2] border-black text-black hover:bg-[#00c48f]'}`}>
-                            <CheckSquare size={14} /> <span className="hidden md:inline">Mark Watched</span>
-                        </button>
-                    </div>
-                ))}
-                {watchlist.length === 0 && (
-                    <div className="text-center py-20 opacity-50">
-                        <Eye size={48} className="mx-auto mb-4" />
-                        <p>Your watchlist is empty.</p>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-};
-
-const Collections = ({ folders, darkMode, onFolderClick, onDeleteFolder, onAddFolder }) => (
-    <div className="p-4 md:p-8 animate-in fade-in duration-500 max-w-[1600px] mx-auto">
-        <h3 className={`font-serif text-3xl font-bold mb-8 ${darkMode ? 'text-white' : 'text-black'}`}>Collections</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            {folders.map(f => (
-                <div key={f.id} className="relative group">
-                    <TiltCard>
-                        <NeoCard onClick={() => onFolderClick(f.name)} className={`aspect-square flex flex-col items-center justify-center gap-3 cursor-pointer group/card ${darkMode ? 'bg-[#1a1a2e] border-gray-600' : 'bg-white hover:bg-gray-50'}`}>
-                            {/* Mac-Style Folder Icon */}
-                            <div className="relative w-20 h-16 transition-transform group-hover/card:scale-110">
-                                <div className={`absolute top-0 left-0 w-full h-full rounded-lg shadow-md ${darkMode ? 'bg-blue-600' : 'bg-[#4facfe]'} z-10`}></div>
-                                <div className={`absolute -top-1.5 left-0 w-1/2 h-3 rounded-t-md ${darkMode ? 'bg-blue-500' : 'bg-[#4facfe]'}`}></div>
-                                <div className="absolute top-2 left-2 right-2 bottom-2 bg-white/20 rounded z-20 backdrop-blur-sm flex items-center justify-center">
-                                    <span className="text-white font-black text-xl drop-shadow-md">{f.name[0]}</span>
-                                </div>
-                            </div>
-                            <h4 className={`font-bold text-center mt-2 ${darkMode ? 'text-white' : 'text-black'}`}>{f.name}</h4>
-                            <span className="text-[10px] opacity-50 font-bold">{f.count} items</span>
-                        </NeoCard>
-                    </TiltCard>
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); onDeleteFolder(f.id); }}
-                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 bg-red-500 text-white p-1 rounded-full shadow-md hover:bg-red-600 transition-all z-30 border border-white"
-                    >
-                        <X size={12} />
-                    </button>
-                </div>
-            ))}
-            <NeoCard 
-                onClick={onAddFolder}
-                className={`aspect-square border-dashed flex flex-col items-center justify-center gap-3 cursor-pointer opacity-50 hover:opacity-100 ${darkMode ? 'border-gray-600 text-gray-400' : 'border-black text-gray-500'}`}
-            >
-                <FolderPlus size={32} />
-                <span className="text-xs font-bold">New Folder</span>
-            </NeoCard>
-        </div>
-    </div>
-);
-
-const Journal = ({ journals, setJournals, setShowJournalModal, darkMode }) => {
-    const [selectedEntry, setSelectedEntry] = useState(null);
-
-    return (
-    <div className="p-4 md:p-8 animate-in fade-in duration-500 max-w-[1600px] mx-auto">
-        <div className="flex justify-between items-center mb-8">
-            <div>
-                <h3 className={`font-serif text-3xl font-bold ${darkMode ? 'text-white' : 'text-black'}`}>Mindful Journal</h3>
-                <p className="text-gray-500 text-sm mt-1">Reflect on your cinematic journey.</p>
-            </div>
-            <button 
-                onClick={() => setShowJournalModal(true)}
-                className={`px-4 py-2 rounded-lg font-bold border-2 flex items-center gap-2 shadow-md active:translate-y-0.5 transition-all ${darkMode ? 'bg-purple-600 border-purple-800 text-white hover:bg-purple-500' : 'bg-purple-100 border-black text-purple-900 hover:bg-purple-200'}`}
-            >
-                <Edit3 size={16} /> New Entry
-            </button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {journals.map(j => (
-                <NeoCard key={j.id} onClick={() => setSelectedEntry(j)} className={`min-h-[220px] flex flex-col relative group cursor-pointer hover:scale-[1.02] ${darkMode ? 'bg-[#1a1a2e] border-gray-600' : 'bg-[#fffdf5]'}`}>
-                    <div className={`w-full h-10 border-b-2 flex items-center px-4 gap-3 ${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-[#f0f0f0] border-black'}`}>
-                        <div className="w-2.5 h-2.5 rounded-full bg-red-400 border border-black/10"></div>
-                        <div className="w-2.5 h-2.5 rounded-full bg-yellow-400 border border-black/10"></div>
-                        <div className="w-2.5 h-2.5 rounded-full bg-green-400 border border-black/10"></div>
-                        <div className="ml-auto text-[10px] font-mono opacity-50 font-bold">{j.displayDate}</div>
-                    </div>
-                    <div className="p-6 flex-1 relative">
-                        <div className="absolute inset-0 pointer-events-none opacity-5" style={{ backgroundImage: `linear-gradient(${darkMode ? '#ffffff' : '#000000'} 1px, transparent 1px)`, backgroundSize: '100% 28px', marginTop: '40px' }}></div>
-                        
-                        <div className="flex items-center gap-2 mb-2">
-                            {j.mood === 'happy' && <Smile size={16} className="text-green-500"/>}
-                            {j.mood === 'neutral' && <Meh size={16} className="text-yellow-500"/>}
-                            {j.mood === 'sad' && <Frown size={16} className="text-blue-500"/>}
-                        </div>
-
-                        <h4 className={`font-serif font-bold text-xl mb-3 relative z-10 leading-tight ${darkMode ? 'text-white' : 'text-black'}`}>{j.title}</h4>
-                        <p className={`text-sm font-serif leading-[28px] line-clamp-4 relative z-10 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>{j.text}</p>
-                    </div>
-                </NeoCard>
-            ))}
-        </div>
-
-        {/* Read Mode Modal */}
-        {selectedEntry && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-in zoom-in-95">
-                <div className={`w-full max-w-2xl border-4 rounded-3xl shadow-2xl overflow-hidden relative flex flex-col max-h-[80vh] ${darkMode ? 'bg-[#1a1a2e] border-gray-600' : 'bg-[#fffdf5] border-black'}`}>
-                    <div className={`p-6 border-b-2 flex justify-between items-center ${darkMode ? 'bg-gray-800 border-gray-600' : 'bg-[#fff8e1] border-black'}`}>
-                        <div>
-                            <h3 className={`font-serif text-2xl font-bold ${darkMode ? 'text-white' : 'text-black'}`}>{selectedEntry.title}</h3>
-                            <p className="text-xs opacity-60 font-mono mt-1">{selectedEntry.displayDate}</p>
-                        </div>
-                        <button onClick={() => setSelectedEntry(null)} className="bg-red-500 text-white rounded-full p-2 border-2 border-black hover:scale-110 transition-transform"><X size={20}/></button>
-                    </div>
-                    <div className="p-8 overflow-y-auto">
-                        <p className={`text-lg font-serif leading-loose whitespace-pre-wrap ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>{selectedEntry.text}</p>
-                    </div>
-                </div>
-            </div>
-        )}
-    </div>
-    );
-};
-
-const AdminProfile = ({ user, setUser, movies, watchlist, darkMode }) => {
-    const total = movies.length + watchlist.length;
-    const watchedPercent = total === 0 ? 0 : (movies.length / total) * 100;
-    const remainingPercent = total === 0 ? 0 : (watchlist.length / total) * 100;
-
-    const exportData = () => {
-        const dataStr = JSON.stringify({ user, movies, watchlist }, null, 2);
-        const blob = new Blob([dataStr], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = "cinefolder_data.json";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
-    const resetData = () => {
-        if(confirm("Are you sure? This will delete ALL data and reset to defaults.")) {
-            localStorage.clear();
-            window.location.reload();
-        }
-    }
-
-    return (
-        <div className="p-8 flex flex-col lg:flex-row gap-8 animate-in slide-in-from-bottom-8 duration-500 max-w-[1600px] mx-auto">
-            
-            <NeoCard className={`flex-1 p-12 flex flex-col items-center ${darkMode ? 'bg-[#1a1a2e] border-gray-600' : 'bg-white'}`}>
-                <h3 className={`font-serif text-3xl font-bold mb-10 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-black'}`}>
-                    <User className="text-purple-500" /> Admin Identity
-                </h3>
-                
-                <div className={`w-40 h-40 rounded-3xl border-4 ${user.avatar?.color || 'bg-gray-200'} flex items-center justify-center text-6xl shadow-[8px_8px_0px_0px_#000] mb-8 relative hover:scale-105 transition-all ${darkMode ? 'border-gray-500' : 'border-black'}`}>
-                    {user.avatar?.icon || '👤'}
-                </div>
-
-                <div className="w-full max-w-sm space-y-6 z-10 px-4 mb-12">
-                    <input 
-                        value={user.name} 
-                        onChange={(e) => setUser({...user, name: e.target.value})}
-                        className={`w-full text-center text-2xl font-bold border-2 rounded-lg py-3 focus:outline-none transition-all ${darkMode ? 'bg-gray-700 border-gray-500 text-white' : 'bg-gray-50 border-black'}`} 
-                    />
-                    <button className={`w-full font-bold py-4 rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-2 ${darkMode ? 'bg-purple-600 text-white hover:bg-purple-500' : 'bg-black text-white hover:bg-gray-800'}`}>
-                        <Save size={16} /> Save Profile
-                    </button>
-                </div>
-            </NeoCard>
-
-            <div className="w-full lg:w-[450px] space-y-8">
-                <NeoCard className={`p-6 ${darkMode ? 'bg-[#1a1a2e] border-gray-600' : 'bg-white'}`}>
-                    <h3 className={`font-serif text-xl font-bold mb-6 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-black'}`}>
-                        <BarChart3 size={20} /> Watchlist Remaining
-                    </h3>
-                    
-                    <div className="flex h-64 items-end gap-4 justify-center pb-4 border-b-2 border-dashed border-gray-300">
-                        <div className="w-16 flex flex-col items-center gap-2 group">
-                            <span className={`text-xs font-bold ${darkMode ? 'text-white' : 'text-black'}`}>{movies.length}</span>
-                            <div style={{ height: `${watchedPercent}%` }} className="w-full bg-green-500 rounded-t-lg transition-all duration-1000 group-hover:bg-green-400"></div>
-                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">Watched</span>
-                        </div>
-                        <div className="w-16 flex flex-col items-center gap-2 group">
-                            <span className={`text-xs font-bold ${darkMode ? 'text-white' : 'text-black'}`}>{watchlist.length}</span>
-                            <div style={{ height: `${remainingPercent}%` }} className="w-full bg-purple-500 rounded-t-lg transition-all duration-1000 group-hover:bg-purple-400"></div>
-                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">To Watch</span>
-                        </div>
-                    </div>
-                </NeoCard>
-
-                <NeoCard 
-                    onClick={exportData}
-                    className={`flex items-center justify-between p-6 cursor-pointer hover:scale-[1.02] ${darkMode ? 'bg-gray-800 text-white border-gray-500' : 'bg-gray-900 text-white'}`}
-                >
-                    <div>
-                        <h4 className="font-bold">Permanent Backup</h4>
-                        <p className="text-xs opacity-60">Download JSON Database</p>
-                    </div>
-                    <FileJson />
-                </NeoCard>
-
-                <div className="text-center">
-                    <button onClick={resetData} className="text-red-500 text-xs font-bold uppercase tracking-widest hover:underline">Reset All Data</button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const ModalNewEntry = ({ setShowAddModal, onSave, folders, initialData, isWatchlistMode, existingTitles }) => {
-    const isEditing = !!initialData;
-    const [category, setCategory] = useState(initialData?.type || 'Film / Movie');
-    const [title, setTitle] = useState(initialData?.title || '');
-    const [errors, setErrors] = useState({});
-    const [suggestions, setSuggestions] = useState([]);
-
-    const handleTitleChange = (e) => {
-        const val = e.target.value;
-        setTitle(val);
-        if (val.length > 2) {
-            setSuggestions(existingTitles.filter(t => t.toLowerCase().includes(val.toLowerCase()) && t !== val));
-        } else {
-            setSuggestions([]);
-        }
-    };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const newErrors = {};
-        
-        if (!formData.get('title')) newErrors.title = "Title is required";
-        
-        if (Object.keys(newErrors).length > 0) {
-            setErrors(newErrors);
-            return;
-        }
-
-        onSave(formData, initialData?.id, isWatchlistMode);
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200">
-           <div className={`w-full max-w-md bg-white border-4 border-black rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden relative ${Object.keys(errors).length > 0 ? 'animate-[shake_0.5s_ease-in-out]' : ''}`}>
-              <div className={`border-b-2 border-black p-4 flex justify-between items-center ${isWatchlistMode ? 'bg-purple-400' : 'bg-[#00Dfa2]'}`}>
-                 <h3 className="font-serif text-xl font-bold flex items-center gap-2">
-                     {isWatchlistMode ? <Eye size={20} /> : <Plus size={20} />} 
-                     {isWatchlistMode ? 'Add to Watchlist' : 'Log Watched'}
-                 </h3>
-                 <button onClick={() => setShowAddModal(false)} className="hover:rotate-90 transition-transform bg-red-500 text-white rounded-full p-1 border-2 border-black"><X size={20} strokeWidth={3}/></button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="p-6 space-y-5 bg-[#fff]">
-                 <div className="grid grid-cols-2 gap-4">
-                   <div>
-                     <label className="text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1 block">Category</label>
-                     <div className="relative">
-                        <select 
-                            name="type" 
-                            value={category}
-                            onChange={(e) => setCategory(e.target.value)}
-                            className="w-full p-2.5 border-2 border-black rounded-lg font-bold bg-white focus:shadow-[4px_4px_0px_0px_#000] focus:bg-white outline-none transition-all appearance-none text-sm cursor-pointer"
-                        >
-                            <option value="Film / Movie">Film / Movie</option>
-                            <option value="TV Series">TV Series</option>
-                            <option value="Anime">Anime</option>
-                        </select>
-                        <div className="absolute right-3 top-3 pointer-events-none text-xs">▼</div>
-                     </div>
-                   </div>
-                   
-                   {!isWatchlistMode && (
-                       <div>
-                         <label className="text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1 block">Date Watched</label>
-                         <input name="date" type="date" defaultValue={new Date().toISOString().split('T')[0]} className="w-full p-2.5 border-2 border-black rounded-lg font-bold outline-none focus:shadow-[4px_4px_0px_0px_#000] focus:bg-white bg-white transition-all text-sm cursor-pointer" />
-                       </div>
-                   )}
-                 </div>
-
-                 <div className="col-span-2 relative">
-                    <label className="text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1 block">Title</label>
-                    <input 
-                        name="title" 
-                        value={title}
-                        onChange={handleTitleChange}
-                        placeholder="e.g. Fallout" 
-                        className={`w-full p-2.5 border-2 rounded-lg font-bold outline-none transition-all placeholder:text-gray-300 text-sm ${errors.title ? 'border-red-500 bg-red-50' : 'border-black focus:shadow-[4px_4px_0px_0px_#000]'}`} 
-                    />
-                    {errors.title && <div className="text-[10px] text-red-500 font-bold mt-1 flex items-center gap-1 animate-in slide-in-from-left-2"><AlertCircle size={10}/> {errors.title}</div>}
-                    
-                    {suggestions.length > 0 && (
-                        <div className="absolute top-full left-0 w-full bg-white border-2 border-black rounded-lg mt-1 z-10 shadow-lg max-h-32 overflow-y-auto">
-                            {suggestions.map(s => (
-                                <div key={s} onClick={() => { setTitle(s); setSuggestions([]); }} className="p-2 text-sm hover:bg-gray-100 cursor-pointer font-bold border-b border-gray-100">{s}</div>
-                            ))}
-                        </div>
-                    )}
-                 </div>
-
-                 {/* Season hidden for watchlist */}
-                 {!isWatchlistMode && (category === 'TV Series' || category === 'Anime') && (
-                     <div className="animate-in slide-in-from-top-4 fade-in duration-300">
-                        <label className="text-[10px] font-bold uppercase text-purple-600 tracking-wider mb-1 block">Season / Arc Name</label>
-                        <input name="season" defaultValue={initialData?.season || "Season 1"} placeholder="Season 1" className="w-full p-2.5 border-2 border-purple-500 rounded-lg bg-purple-50 font-bold outline-none focus:bg-white focus:shadow-[4px_4px_0px_0px_#8b5cf6] transition-all text-sm" />
-                     </div>
-                 )}
-
-                 {/* Folder Selection */}
-                 {!isWatchlistMode && (
-                    <div>
-                        <label className="text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1 block">Collection</label>
-                        <div className="relative">
-                            <select name="folder" className="w-full p-2.5 border-2 border-black rounded-lg font-bold bg-white focus:shadow-[4px_4px_0px_0px_#000] outline-none appearance-none text-sm cursor-pointer">
-                                <option value="">Unsorted</option>
-                                {folders.map(f => <option key={f.id} value={f.name}>{f.name}</option>)}
-                            </select>
-                            <div className="absolute right-3 top-3 pointer-events-none text-xs">▼</div>
-                        </div>
-                    </div>
-                 )}
-
-                 {!isWatchlistMode && (
-                     <div>
-                        <label className="text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1 block">Rating</label>
-                        <div className="flex items-center gap-3">
-                          <input name="rating" type="range" min="0" max="5" step="0.1" defaultValue={initialData?.rating || 2.5} className="flex-1 accent-black h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer border border-black" />
-                        </div>
-                     </div>
-                 )}
-
-                 <div>
-                    <label className="text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1 block">Poster URL</label>
-                    <div className="flex gap-2">
-                       <input id="posterInput" name="poster" defaultValue={initialData?.poster} placeholder="/image?query=..." className="flex-1 p-2.5 border-2 border-black rounded-lg bg-gray-50 text-xs font-mono outline-none focus:bg-white focus:shadow-[4px_4px_0px_0px_#000] transition-all" />
-                       <label className="p-2.5 border-2 border-black rounded-lg bg-white hover:bg-gray-100 cursor-pointer shadow-[2px_2px_0px_0px_#000] active:translate-y-0.5 active:shadow-none transition-all">
-                           <Upload size={16}/>
-                           <input type="file" className="hidden" onChange={(e) => {
-                               if (e.target.files && e.target.files[0]) {
-                                   const url = URL.createObjectURL(e.target.files[0]);
-                                   document.getElementById('posterInput').value = url;
-                               }
-                           }}/>
-                       </label>
-                    </div>
-                 </div>
-
-                 {!isWatchlistMode && (
-                     <div>
-                        <label className="text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-1 block">Review</label>
-                        <textarea name="notes" defaultValue={initialData?.notes} rows="3" placeholder="Your thoughts..." className="w-full p-2.5 border-2 border-black rounded-lg bg-gray-50 font-medium outline-none focus:bg-white focus:shadow-[4px_4px_0px_0px_#000] transition-all resize-none text-sm"></textarea>
-                     </div>
-                 )}
-
-                 <button type="submit" className={`w-full py-3.5 text-white font-black text-sm uppercase tracking-widest rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,0.5)] active:translate-y-[2px] active:shadow-none transition-all mt-2 flex items-center justify-center gap-2 ${isWatchlistMode ? 'bg-purple-600' : 'bg-black'}`}>
-                   {isEditing ? 'Update Entry' : (isWatchlistMode ? 'Add to Watchlist' : 'Log Entry')}
-                 </button>
-              </form>
-           </div>
-        </div>
-    );
-};
-
-const ModalNewFolder = ({ onClose, onSave }) => {
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        if(formData.get('name')) onSave(formData.get('name'));
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-in fade-in zoom-in-95">
-            <div className="w-full max-w-sm bg-white border-4 border-black rounded-2xl overflow-hidden p-6 shadow-2xl relative">
-                <button onClick={onClose} className="absolute top-4 right-4 bg-red-500 text-white rounded-full p-1 border-2 border-black"><X size={16}/></button>
-                <h3 className="font-serif text-2xl font-bold mb-4">New Collection</h3>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <input name="name" autoFocus placeholder="e.g. Sci-Fi Favorites" className="w-full p-3 border-2 border-black rounded-xl font-bold outline-none focus:shadow-[4px_4px_0px_0px_#000]" />
-                    <button className="w-full bg-black text-white font-bold py-3 rounded-xl hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)]">Create Folder</button>
                 </form>
             </div>
         </div>
     );
 };
 
-// --- Main Application ---
+// 6. MAIN APP
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
-  const [currentFolder, setCurrentFolder] = useState(null); // For Filtering DB
-  
-  // Data State
-  const [movies, setMovies] = useState([]); 
-  const [watchlist, setWatchlist] = useState([]);
-  const [journals, setJournals] = useState([]); 
-  const [folders, setFolders] = useState([]);
-  const [user, setUser] = useState({ name: 'Admin', role: 'PRO', avatar: AVATARS[7] });
-
-  // UI State
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showJournalModal, setShowJournalModal] = useState(false);
-  const [showFolderModal, setShowFolderModal] = useState(false);
-  const [isWatchlistMode, setIsWatchlistMode] = useState(false);
-
-  // Initialize Data
-  useEffect(() => {
-    // Helper to safely load data
-    const safeLoad = (key, setter, seed) => {
-        try {
-            const stored = localStorage.getItem(key);
-            if (stored && stored !== "undefined") {
-                setter(JSON.parse(stored));
-            } else {
-                // If local storage is empty or undefined, use seed
-                setter(seed);
-            }
-        } catch (e) {
-            // If error parsing, use seed
-            console.error(`Error loading ${key}`, e);
-            setter(seed);
-        }
-    };
-
-    safeLoad('cinefolder_movies', setMovies, SEED_DATA.movies);
-    safeLoad('cinefolder_watchlist', setWatchlist, SEED_DATA.watchlist);
-    safeLoad('cinefolder_journals', setJournals, SEED_DATA.journals);
-    safeLoad('cinefolder_folders', setFolders, SEED_DATA.folders);
-    safeLoad('cinefolder_user', setUser, SEED_DATA.user);
-  }, []);
-
-  // Persist Data
-  useEffect(() => {
-    localStorage.setItem('cinefolder_movies', JSON.stringify(movies));
-    localStorage.setItem('cinefolder_watchlist', JSON.stringify(watchlist));
-    localStorage.setItem('cinefolder_journals', JSON.stringify(journals));
-    localStorage.setItem('cinefolder_folders', JSON.stringify(folders));
-    localStorage.setItem('cinefolder_user', JSON.stringify(user));
-  }, [movies, watchlist, journals, folders, user]);
-
-  // Search Debounce
-  useEffect(() => {
-      if(searchQuery) {
-          setIsSearching(true);
-          const timer = setTimeout(() => setIsSearching(false), 500); 
-          return () => clearTimeout(timer);
-      } else {
-          setIsSearching(false);
-      }
-  }, [searchQuery]);
-
-  const handleSaveEntry = (formData, id, isWatchlist) => {
-    // Auto-detect year from Date Watched
-    const dateWatched = formData.get('date');
-    const detectedYear = dateWatched ? new Date(dateWatched).getFullYear() : new Date().getFullYear();
-
-    const entry = {
-      title: formData.get('title'),
-      year: detectedYear, // Extracted Automatically
-      type: formData.get('type'),
-      season: formData.get('season') || null,
-      folder: formData.get('folder') || null,
-      poster: formData.get('poster') || 'https://placehold.co/300x450/pink/black?text=No+Img',
-      date: isWatchlist ? null : dateWatched,
-      rating: isWatchlist ? null : parseFloat(formData.get('rating')),
-      notes: isWatchlist ? null : formData.get('notes'),
-      id: id || Date.now(),
-    };
-
-    if (isWatchlist) {
-        setWatchlist(prev => id ? prev.map(i => i.id === id ? entry : i) : [entry, ...prev]);
-    } else {
-        setMovies(prev => id ? prev.map(i => i.id === id ? entry : i) : [entry, ...prev]);
-        // Update folder counts
-        if (entry.folder) {
-            setFolders(folders.map(f => f.name === entry.folder ? { ...f, count: f.count + 1 } : f));
-        }
-    }
+    // State
+    const [activeTab, setActiveTab] = useState('dashboard');
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    // Initialize dark mode from localStorage
+    const [darkMode, setDarkMode] = useState(() => {
+        const saved = localStorage.getItem('cine_darkmode');
+        return saved ? JSON.parse(saved) : false;
+    });
+    const [userData, setUserData] = useState(() => {
+        const saved = localStorage.getItem('cine_user');
+        return saved ? JSON.parse(saved) : DEFAULT_USER_DATA;
+    });
     
-    setShowAddModal(false);
-  };
-
-  const handleSaveJournal = (formData, mood, dateStr) => {
-      const dateObj = new Date(dateStr);
-      const displayDate = `${dateObj.toLocaleDateString('en-US', { weekday: 'long' })} | ${dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}`;
-
-      const newEntry = {
-          id: Date.now(),
-          title: formData.get('title'),
-          text: formData.get('text'),
-          mood: mood,
-          date: dateStr,
-          displayDate: displayDate
-      };
-      setJournals([newEntry, ...journals]);
-      setShowJournalModal(false);
-  };
-
-  const handleAddFolder = (name) => {
-      setFolders([...folders, { id: Date.now(), name, count: 0 }]);
-      setShowFolderModal(false);
-  }
-
-  const handleFolderClick = (folderName) => {
-      setCurrentFolder(folderName);
-      setActiveTab('database');
-  };
-
-  const handleDeleteFolder = (id) => {
-      if(confirm("Delete folder? Movies inside will remain in database but unsorted.")) {
-          setFolders(folders.filter(f => f.id !== id));
-      }
-  };
-
-  const handleDeleteWatchlist = (id) => {
-      if(confirm("Remove from Watchlist?")) {
-          setWatchlist(watchlist.filter(w => w.id !== id));
-      }
-  }
-
-  return (
-    <div className={`flex min-h-screen font-sans selection:bg-yellow-300 overflow-x-hidden ${darkMode ? 'bg-[#0f0c29] text-white' : 'bg-[#F3F4F6] text-black'}`}>
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} darkMode={darkMode} setDarkMode={setDarkMode} />
-      
-      <div className="flex-1 md:ml-64 flex flex-col relative transition-all duration-500 isolate" 
-           style={darkMode ? { backgroundImage: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)' } : { backgroundImage: 'radial-gradient(#00000010 2px, transparent 2px)', backgroundSize: '24px 24px' }}>
-        
-        <TopBar 
-            title={activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} 
-            user={user} 
-            searchQuery={searchQuery} 
-            setSearchQuery={setSearchQuery} 
-            setShowAddModal={() => { setIsWatchlistMode(false); setShowAddModal(true); }}
-            movies={movies} // Passing movies for search prediction
-            darkMode={darkMode}
-            setActiveTab={setActiveTab}
-            activeTab={activeTab}
-        />
-        
-        <div className="flex-1 min-h-[calc(100vh-80px)] pb-24">
-             {activeTab === 'dashboard' && <Dashboard movies={movies} watchlist={watchlist} user={user} setActiveTab={setActiveTab} setShowAddModal={() => { setIsWatchlistMode(false); setShowAddModal(true); }} darkMode={darkMode} />}
-             {activeTab === 'database' && <FilmDatabase movies={movies} darkMode={darkMode} searchQuery={searchQuery} currentFolder={currentFolder} clearFolderFilter={() => setCurrentFolder(null)} />}
-             {activeTab === 'watchlist' && <Watchlist watchlist={watchlist} darkMode={darkMode} setShowAddModal={setShowAddModal} setIsWatchlistMode={setIsWatchlistMode} onDelete={handleDeleteWatchlist} />}
-             {activeTab === 'collections' && <Collections folders={folders} darkMode={darkMode} onFolderClick={handleFolderClick} onDeleteFolder={handleDeleteFolder} onAddFolder={() => setShowFolderModal(true)} />}
-             {activeTab === 'journal' && <Journal journals={journals} setJournals={setJournals} setShowJournalModal={setShowJournalModal} darkMode={darkMode} />}
-             {activeTab === 'admin' && <AdminProfile user={user} setUser={setUser} movies={movies} watchlist={watchlist} darkMode={darkMode} />}
-        </div>
-      </div>
-
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} darkMode={darkMode} />
-
-      {showAddModal && <ModalNewEntry setShowAddModal={setShowAddModal} onSave={handleSaveEntry} folders={folders} isWatchlistMode={isWatchlistMode} existingTitles={movies.map(m => m.title).concat(watchlist.map(w => w.title))} />}
-      {showJournalModal && <ModalJournalEntry setShowJournalModal={setShowJournalModal} onSave={handleSaveJournal} />}
-      {showFolderModal && <ModalNewFolder onClose={() => setShowFolderModal(false)} onSave={handleAddFolder} />}
-      
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Space+Grotesk:wght@400;500;700&display=swap');
-        .font-serif { font-family: 'Playfair Display', serif; }
-        .font-sans { font-family: 'Space Grotesk', sans-serif; }
-        .animate-spin-slow { animation: spin 8s linear infinite; }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
-        .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: #d1d5db; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
+    // Data State
+    const [movies, setMovies] = useState(() => {
+        const saved = localStorage.getItem('cine_movies');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            return parsed.map(m => ({ ...m, watched: m.watched !== undefined ? m.watched : true }));
         }
-      `}</style>
-    </div>
-  );
+        return [
+            { id: '1', title: 'Spirited Away', year: 2001, director: 'Hayao Miyazaki', rating: 5, poster: 'https://m.media-amazon.com/images/M/MV5BMjlmZmI5MDctNDE2YS00YWE0LWE5ZWItZDBhYWQ0NTcxNWRhXkEyXkFqcGdeQXVyMTMxODk2OTU@._V1_SX300.jpg', folder: 'Ghibli Vibes', notes: 'Masterpiece.', watched: true, addedAt: new Date().toISOString() },
+            { id: '2', title: 'Grand Budapest Hotel', year: 2014, director: 'Wes Anderson', rating: 4.5, poster: 'https://m.media-amazon.com/images/M/MV5BMzM5NjUxOTEyMl5BMl5BanBnXkFtZTgwNjEyMDM0MDE@._V1_SX300.jpg', folder: 'Wes Anderson', notes: 'Symmetry!', watched: true, addedAt: new Date().toISOString() },
+            { id: '3', title: 'Nosferatu', year: 2024, director: 'Robert Eggers', rating: 0, poster: 'https://upload.wikimedia.org/wikipedia/en/2/23/Nosferatu_2024_poster.jpeg', folder: 'Horror 2025', notes: 'Cannot wait for this.', watched: false, addedAt: new Date().toISOString() }
+        ];
+    });
+
+    const [tasks, setTasks] = useState(() => {
+        const saved = localStorage.getItem('cine_tasks');
+        return saved ? JSON.parse(saved) : [
+            { id: 't1', text: 'Rewatch Interstellar', completed: false },
+            { id: 't2', text: 'Buy tickets for Wicked', completed: true },
+        ];
+    });
+
+    const [folders, setFolders] = useState([
+        { id: 'f1', name: 'Ghibli Vibes', count: 1, color: 'bg-pink-100 dark:bg-pink-900', tabColor: '#F472B6', icon: 'heart' },
+        { id: 'f2', name: 'Wes Anderson', count: 1, color: 'bg-yellow-100 dark:bg-yellow-900', tabColor: '#FACC15', icon: 'film' },
+        { id: 'f3', name: 'Horror 2025', count: 1, color: 'bg-purple-100 dark:bg-purple-900', tabColor: '#A855F7', icon: 'ghost' },
+        { id: 'f4', name: 'Classics', count: 0, color: 'bg-blue-100 dark:bg-blue-900', tabColor: '#60A5FA', icon: 'star' },
+        { id: 'f5', name: 'Watchlist', count: 0, color: 'bg-green-100 dark:bg-green-900', tabColor: '#4ADE80', icon: 'eye' },
+    ]);
+
+    // Modal State
+    const [selectedMovie, setSelectedMovie] = useState(null); // For Detail View
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false); // For Edit Form
+    const [isSyncModalOpen, setIsSyncModalOpen] = useState(false); // For CSV Sync
+    const [movieToEdit, setMovieToEdit] = useState(null); // Data for Edit Form
+
+    // Effects
+    useEffect(() => { localStorage.setItem('cine_movies', JSON.stringify(movies)); }, [movies]);
+    useEffect(() => { localStorage.setItem('cine_tasks', JSON.stringify(tasks)); }, [tasks]);
+    useEffect(() => { localStorage.setItem('cine_user', JSON.stringify(userData)); }, [userData]);
+    useEffect(() => { localStorage.setItem('cine_darkmode', JSON.stringify(darkMode)); }, [darkMode]);
+
+    // Handlers
+    const handleAddMovie = () => {
+        setMovieToEdit(null);
+        setIsEditModalOpen(true);
+    };
+
+    const handleEditMovie = (movie) => {
+        setSelectedMovie(null); // Close detail modal
+        setMovieToEdit(movie);
+        setIsEditModalOpen(true);
+    };
+
+    const handleSaveMovie = (movie) => {
+        setMovies(prev => {
+            const exists = prev.find(m => m.id === movie.id);
+            if (exists) return prev.map(m => m.id === movie.id ? movie : m);
+            return [movie, ...prev];
+        });
+        setIsEditModalOpen(false);
+    };
+
+    const handleSyncData = async (csvContent, isWatchlist) => {
+        try {
+            const newItems = parseCSV(csvContent, isWatchlist);
+            
+            // 1. Immediate Update & Persistence
+            let currentMovies = [];
+            setMovies(prev => {
+                currentMovies = [...prev, ...newItems];
+                return currentMovies;
+            });
+            
+            localStorage.setItem('cine_movies', JSON.stringify(currentMovies));
+            setIsSyncModalOpen(false);
+
+            // 2. Background Fetch for Metadata
+            const itemsToFetch = newItems.filter(i => i.poster === 'N/A');
+            
+            if (itemsToFetch.length > 0) {
+                (async () => {
+                    for (const item of itemsToFetch) {
+                        try {
+                            const res = await fetch(`https://www.omdbapi.com/?t=${encodeURIComponent(item.title)}&apikey=${OMDB_API_KEY}`);
+                            const data = await res.json();
+                            
+                            if (data.Response === 'True') {
+                                setMovies(prev => {
+                                    const updated = prev.map(m => {
+                                        if (m.id === item.id) {
+                                            return {
+                                                ...m,
+                                                poster: data.Poster !== "N/A" ? data.Poster : m.poster,
+                                                year: data.Year || m.year,
+                                                director: data.Director || m.director,
+                                                genre: data.Genre || m.genre
+                                            };
+                                        }
+                                        return m;
+                                    });
+                                    // Save progress incrementally
+                                    localStorage.setItem('cine_movies', JSON.stringify(updated));
+                                    return updated;
+                                });
+                            }
+                        } catch (e) { console.error(e); }
+                        await new Promise(r => setTimeout(r, 200));
+                    }
+                })();
+            }
+            alert(`Imported ${newItems.length} items. Covers are updating in the background...`);
+        } catch (error) {
+            console.error(error);
+            alert("Error parsing CSV. Please check the file format.");
+        }
+    };
+
+    const handleSearch = (query) => {
+        setSearchQuery(query);
+        if (query.length > 0 && activeTab !== 'database' && activeTab !== 'watchlist') {
+            setActiveTab('database');
+        }
+    };
+
+    // Derived Data
+    const folderCounts = useMemo(() => {
+        const counts = {};
+        movies.forEach(m => {
+            if (m.folder) counts[m.folder] = (counts[m.folder] || 0) + 1;
+        });
+        return counts;
+    }, [movies]);
+
+    // Sync counts to folders object for display
+    useEffect(() => {
+        setFolders(prev => prev.map(f => ({ ...f, count: folderCounts[f.name] || 0 })));
+    }, [folderCounts]);
+
+    return (
+        <div className={`flex h-screen font-sans overflow-hidden relative ${darkMode ? 'dark' : ''}`}>
+            {/* Background Grid Pattern */}
+            <div className="absolute inset-0 z-0 bg-blue-50 dark:bg-gray-950 transition-colors duration-300">
+                <div 
+                    className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-10"
+                    style={{ 
+                        backgroundImage: `linear-gradient(${darkMode ? '#444' : '#fff'} 2px, transparent 2px), linear-gradient(90deg, ${darkMode ? '#444' : '#fff'} 2px, transparent 2px)`,
+                        backgroundSize: '40px 40px'
+                    }}
+                />
+            </div>
+
+            <Sidebar 
+                activeTab={activeTab} 
+                setActiveTab={setActiveTab} 
+                isOpen={sidebarOpen}
+                setIsOpen={setSidebarOpen}
+                onSyncClick={() => setIsSyncModalOpen(true)}
+                darkMode={darkMode}
+                toggleDarkMode={() => setDarkMode(!darkMode)}
+            />
+
+            {/* Main Content Area */}
+            <main className="flex-1 md:ml-64 flex flex-col h-full relative z-10 overflow-hidden text-gray-900 dark:text-white">
+                {/* Header */}
+                <header className="h-20 bg-white dark:bg-gray-900 border-b-2 border-black dark:border-white flex items-center justify-between px-4 md:px-8 shrink-0 transition-colors duration-300">
+                    <div className="flex items-center gap-4">
+                         <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg dark:text-white">
+                            <Menu size={24} />
+                        </button>
+                        <div className="hidden md:block">
+                            <h2 className="font-serif text-3xl font-bold dark:text-white">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h2>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{formatDate(new Date())}</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 w-full md:w-auto justify-end">
+                        <div className="hidden md:block w-64">
+                            <SearchBar value={searchQuery} onSearch={handleSearch} />
+                        </div>
+                        <div className="flex items-center gap-3 bg-white dark:bg-gray-900 border-2 border-black dark:border-white rounded-full pl-1 pr-4 py-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:translate-y-1 hover:shadow-none transition-all cursor-pointer">
+                            <div className="w-8 h-8 rounded-full bg-gray-200 border border-black dark:border-white overflow-hidden">
+                                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.name}`} alt="avatar" />
+                            </div>
+                            <span className="font-bold text-sm dark:text-white">MOVIEBUFF</span>
+                        </div>
+                    </div>
+                </header>
+
+                {/* Scrollable View Content */}
+                <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+                    <div className="max-w-[1600px] mx-auto pb-20">
+                        {activeTab === 'dashboard' && (
+                            <Dashboard 
+                                movies={movies} 
+                                tasks={tasks} 
+                                setTasks={setTasks}
+                                onAddMovie={handleAddMovie}
+                                onMovieClick={setSelectedMovie}
+                                userData={userData}
+                            />
+                        )}
+                        {activeTab === 'collections' && (
+                            <CollectionsView 
+                                folders={folders} 
+                                onAddFolder={() => alert("Feature coming soon!")}
+                                onFolderClick={(name) => { setSearchQuery(name); setActiveTab('database'); }}
+                            />
+                        )}
+                        {activeTab === 'database' && (
+                            <DatabaseView 
+                                movies={movies} 
+                                searchQuery={searchQuery}
+                                onMovieClick={setSelectedMovie}
+                                isWatchlistMode={false}
+                            />
+                        )}
+                        {activeTab === 'watchlist' && (
+                            <DatabaseView 
+                                movies={movies} 
+                                searchQuery={searchQuery}
+                                onMovieClick={setSelectedMovie}
+                                isWatchlistMode={true}
+                            />
+                        )}
+                         {activeTab === 'statistics' && (
+                            <StatisticsView movies={movies} />
+                        )}
+                        {activeTab === 'idcard' && (
+                            <IDCardView userData={userData} setUserData={setUserData} />
+                        )}
+                    </div>
+                </div>
+
+                {/* Mobile Floating Action Button */}
+                <button 
+                    onClick={handleAddMovie}
+                    className="md:hidden absolute bottom-6 right-6 w-14 h-14 bg-black dark:bg-white text-white dark:text-black rounded-full border-2 border-white dark:border-black shadow-xl flex items-center justify-center z-30"
+                >
+                    <Plus size={24} />
+                </button>
+            </main>
+
+            {/* Modals */}
+            <MovieDetailModal 
+                movie={selectedMovie} 
+                onClose={() => setSelectedMovie(null)} 
+                onEdit={handleEditMovie}
+            />
+            
+            <EditEntryModal 
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                movie={movieToEdit}
+                onSave={handleSaveMovie}
+            />
+
+            <DataSyncModal 
+                isOpen={isSyncModalOpen}
+                onClose={() => setIsSyncModalOpen(false)}
+                onSync={handleSyncData}
+            />
+
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Space+Grotesk:wght@400;500;700&display=swap');
+                .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: ${darkMode ? '#fff' : '#000'}; border-radius: 4px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .perspective-1000 { perspective: 1000px; }
+            `}</style>
+        </div>
+    );
 }
